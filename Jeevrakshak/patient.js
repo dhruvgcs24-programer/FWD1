@@ -6,10 +6,10 @@ const API_URL = 'http://localhost:3000/api';
 const patientName = localStorage.getItem('current_patient_name') || 'Test Patient'; 
 const authToken = localStorage.getItem('auth_token');
 
-// // Redirect if not logged in
-// if (!localStorage.getItem('current_patient_name') || !authToken) {
-//      redirectToLogin("Please log in.");
-// }
+// Redirect if not logged in
+if (!localStorage.getItem('current_patient_name') || !authToken) {
+     redirectToLogin("Please log in.");
+}
 
 // --- GOAL TRACKER CONFIGURATION ---
 const GOAL_TARGETS = {
