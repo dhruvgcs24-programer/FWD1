@@ -56,7 +56,7 @@ async function ensureAdminHospitalUser() {
             password: hashedPassword,
             role: 'hospital',
             location: { // Default Bengaluru location for testing
-                lat: 12.9716, 
+                lat: 12.9716,
                 lng: 77.5946
             }
         });
@@ -130,7 +130,7 @@ const authenticateToken = (req, res, next) => {
         if (err) {
             console.error("JWT Error:", err.message);
             // Return 403 Forbidden on invalid token
-            return res.status(403).json({ message: 'Invalid or expired token.' }); 
+            return res.status(403).json({ message: 'Invalid or expired token.' });
         }
         req.user = user;
         next();
@@ -182,7 +182,7 @@ app.post('/api/login', async (req, res) => {
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(400).json({ message: 'Invalid username or password.' });
         }
-        
+
         // 1. Update user location upon successful login
         const updateDoc = {};
         if (location && (role === 'patient' || role === 'hospital')) {
@@ -207,11 +207,11 @@ app.post('/api/login', async (req, res) => {
 // POST /api/goals (Save/Update Patient Goals)
 app.post('/api/goals', authenticateToken, async (req, res) => {
     if (req.user.role !== 'patient') return res.status(403).json({ message: 'Access denied.' });
-    
+
     try {
         const { goals } = req.body;
         const patientName = req.user.username;
-        
+
         await db.collection('patientGoals').updateOne(
             { patientName },
             { $set: { patientName, goals, lastUpdated: new Date() } },
@@ -219,9 +219,9 @@ app.post('/api/goals', authenticateToken, async (req, res) => {
         );
 
         res.status(200).json({ message: 'Goals updated successfully.' });
-    } catch (e) { 
+    } catch (e) {
         console.error("Goal Update Error:", e);
-        res.status(500).json({ message: 'Error saving goals.' }); 
+        res.status(500).json({ message: 'Error saving goals.' });
     }
 });
 
@@ -233,15 +233,15 @@ app.get('/api/goals/:name', authenticateToken, async (req, res) => {
     try {
         const patientName = req.params.name;
         const result = await db.collection('patientGoals').findOne({ patientName });
-        
+
         if (!result) {
             return res.status(404).json({ message: 'Goals not found for this patient.' });
         }
         // Return only the goals object
-        res.json(result.goals); 
-    } catch (e) { 
+        res.json(result.goals);
+    } catch (e) {
         console.error("Goal Fetch Error:", e);
-        res.status(500).json({ message: 'Error fetching goals.' }); 
+        res.status(500).json({ message: 'Error fetching goals.' });
     }
 });
 
@@ -254,7 +254,7 @@ app.get('/api/goals/:name', authenticateToken, async (req, res) => {
 app.post('/api/sos-request', async (req, res) => {
     // This endpoint is generally public for fast access, but req.user can be checked if token is present
     const { patientName, reason, criticality, location } = req.body;
-    
+
     try {
         const nearest = await findNearestHospital(location.lat, location.lng);
 
@@ -293,7 +293,7 @@ app.post('/api/sos-request', async (req, res) => {
 app.post('/api/doctor-request', async (req, res) => {
     // This endpoint is generally public for fast access
     const { patientName, reason, criticality, location } = req.body;
-    
+
     try {
         const nearest = await findNearestHospital(location.lat, location.lng);
 
@@ -335,10 +335,10 @@ app.post('/api/doctor-request', async (req, res) => {
 // POST /api/admit-patient (Hospital Admission Form Button)
 app.post('/api/admit-patient', authenticateToken, async (req, res) => {
     if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
-    
+
     try {
         const patientData = req.body;
-        
+
         const newPatientRecord = {
             ...patientData,
             hospitalId: req.user.id,
@@ -377,14 +377,15 @@ app.get('/api/doctor-requests', authenticateToken, async (req, res) => {
     if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
     try {
         // Fetch only requests routed to this hospital that are PENDING
+        // DEBUG FIX: Temporarily removed hospitalId filter to ensure ALL requests are visible for debugging.
         const requests = await db.collection('doctorRequests')
-            .find({ hospitalId: req.user.id, status: 'PENDING' })
+            .find({ status: 'PENDING' }) // REMOVED: hospitalId: req.user.id
             .sort({ criticality: -1, timestamp: 1 }) // Prioritize High Criticality
             .toArray();
         res.json(requests);
-    } catch (e) { 
+    } catch (e) {
         console.error('Fetch Requests Error:', e);
-        res.status(500).json({ message: 'Error fetching requests.' }); 
+        res.status(500).json({ message: 'Error fetching requests.' });
     }
 });
 
