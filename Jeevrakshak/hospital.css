@@ -312,22 +312,68 @@ body.hospital-body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
+    padding: 16px 20px;
     background: #fff;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #f3f4f6;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.queue-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .queue-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.queue-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.queue-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .priority-tag {
-    font-size: 0.75rem;
-    padding: 3px 8px;
-    border-radius: 4px;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
     font-weight: 700;
     text-transform: uppercase;
-    margin-left: 10px;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+}
+
+.priority-tag.high-priority {
+    background-color: #fee2e2;
+    color: #dc2626;
+    /* Red 600 */
+    border: 1px solid #fecaca;
+}
+
+.priority-tag.medium-priority {
+    background-color: #ffedd5;
+    color: #ea580c;
+    /* Orange 600 */
+    border: 1px solid #fed7aa;
+}
+
+.priority-tag.low-priority {
+    background-color: #d1fae5;
+    color: #059669;
+    /* Green 600 */
+    border: 1px solid #a7f3d0;
 }
 
 /* Quick Actions */
