@@ -1,18 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Jeevrakshak Login</title>
     <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <script>
         // --- CONFIGURATION ---
         const API_URL = 'http://localhost:3000/api'; // Assuming your server runs on port 3000
@@ -32,10 +30,6 @@
                 activeForm.classList.add('active-form');
             }, 10);
 
-            // Location data is now preserved across form switches to prevent data loss.
-            // localStorage.removeItem('patient_latitude');
-            // localStorage.removeItem('patient_longitude');
-
             // Reset status elements
             if (document.getElementById('patient-login-location-status')) {
                 document.getElementById('patient-login-location-status').textContent = 'Location not set.';
@@ -53,11 +47,13 @@
             } else if (role === 'hospital') {
                 localStorage.setItem('current_admin_id', username);
                 window.location.href = 'hospital.html';
+            } else if (role === 'admin') {
+                // If you have an admin dashboard
+                window.location.href = 'admin.html';
             }
         }
 
         // --- GEOLOCATION HELPER FUNCTIONS ---
-        // Function now accepts the ID of the status element to update
         function getPatientLocation(statusId) {
             const statusElement = document.getElementById(statusId);
 
@@ -70,7 +66,6 @@
 
             if (!navigator.geolocation) {
                 statusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i> Geolocation is not supported by your browser.';
-                // Provide a manual option for simulation if Geolocation is not supported
                 if (confirm("Geolocation not supported. Use simulated location (12.9716, 77.5946)?")) {
                     localStorage.setItem('patient_latitude', 12.9716);
                     localStorage.setItem('patient_longitude', 77.5946);
@@ -91,7 +86,6 @@
                     statusElement.innerHTML = `<i class="fas fa-check-circle" style="color:#51cf66;"></i> Location set! (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
                 },
                 (error) => {
-                    // Check for common errors
                     let errorMessage = 'Location access denied or failed.';
                     if (error.code === error.PERMISSION_DENIED) {
                         errorMessage = 'Permission Denied. Please enable location services for this browser/site.';
@@ -102,7 +96,6 @@
                     statusElement.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i> ${errorMessage}`;
                     console.error("Geolocation Error:", error);
 
-                    // Offer a simulation fallback if the real one fails
                     if (confirm("Location access failed. Would you like to set a simulated location for testing (12.9716, 77.5946)?")) {
                         localStorage.setItem('patient_latitude', 12.9716);
                         localStorage.setItem('patient_longitude', 77.5946);
@@ -153,14 +146,12 @@
             }
         }
 
-
         // 2. Patient Login Handler
         async function handlePatientLogin(event) {
             event.preventDefault();
             const username = document.getElementById('patient-login-name').value.trim();
             const password = document.getElementById('patient-login-password').value;
 
-            // Patient location is optionally updated on login, but we check if it was previously set
             const lat = localStorage.getItem('patient_latitude');
             const lng = localStorage.getItem('patient_longitude');
 
@@ -225,6 +216,70 @@
             } catch (error) {
                 console.error('Hospital Login Error:', error);
                 alert('A network error occurred during hospital login.');
+            }
+        }
+
+        // 4. Hospital Registration (uploads proof externally and registers)
+        async function uploadProof(file) {
+            // Simple local simulation: upload to a fake endpoint or return a blob URL.
+            // In production use S3/Cloudinary/your file server. Here we create an Object URL for demo.
+            if (!file) return null;
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // e.target.result is base64 data URL (be careful for large files)
+                    // For production: POST to file storage and return the hosted URL
+                    resolve(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function registerHospital(event) {
+            event.preventDefault();
+            const name = document.getElementById("hosp-name").value.trim();
+            const email = document.getElementById("hosp-email").value.trim();
+            const password = document.getElementById("hosp-pass").value;
+            const lat = document.getElementById("hosp-lat").value;
+            const lng = document.getElementById("hosp-lng").value;
+
+            if (!name || !email || !password || !lat || !lng) {
+                alert("Please fill all fields.");
+                return;
+            }
+
+            const proofFile = document.getElementById("hosp-proof").files[0];
+            if (!proofFile) {
+                alert("Please upload a valid proof document (image/pdf).");
+                return;
+            }
+
+            // uploadProof returns a data URL in this demo. Replace with real upload logic.
+            const proofUrl = await uploadProof(proofFile);
+
+            try {
+                const response = await fetch(`${API_URL}/register/hospital`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        location: { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        proofUrl
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message + " The admin will review your submission and email you once approved.");
+                    showForm('choice-container');
+                } else {
+                    alert(`Signup failed: ${data.message}`);
+                }
+            } catch (err) {
+                console.error('Hospital registration error:', err);
+                alert('Network error during hospital registration.');
             }
         }
 
@@ -301,8 +356,7 @@
 
                 <div class="form-footer">
                     <button type="button" class="back-btn" onclick="showForm('choice-container')">← Back</button>
-                    <p class="form-note">New here? <a href="#"
-                            onclick="showForm('register-container'); return false;">Create Account</a></p>
+                    <p class="form-note">New here? <a href="#" onclick="showForm('register-container'); return false;">Create Account</a></p>
                 </div>
             </form>
         </div>
@@ -316,15 +370,14 @@
                     <label for="patient-reg-name">Choose Username</label>
                     <div class="input-wrapper">
                         <i class="fas fa-user-plus input-icon"></i>
-                        <input type="text" id="patient-reg-name" required placeholder="e.g., myhealth_user">
+                        <input type="text" id="patient-reg-name" required placeholder="e.g. myhealth_user">
                     </div>
                 </div>
                 <div class="input-group">
                     <label for="patient-reg-password">Choose Password</label>
                     <div class="input-wrapper">
                         <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="patient-reg-password" required
-                            placeholder="Create a secure password">
+                        <input type="password" id="patient-reg-password" required placeholder="Create a secure password">
                     </div>
                 </div>
 
@@ -340,12 +393,10 @@
                 </div>
 
                 <div class="form-footer">
-                    <button type="button" class="back-btn" onclick="showForm('patient-login-container')">← Back to
-                        Login</button>
+                    <button type="button" class="back-btn" onclick="showForm('patient-login-container')">← Back to Login</button>
                 </div>
             </form>
         </div>
-
 
         <div id="hospital-login-container" class="form-container" style="display: none;">
             <form class="auth-form" onsubmit="handleHospitalLogin(event); return false;">
@@ -356,16 +407,14 @@
                     <label for="hospital-login-id">Admin ID</label>
                     <div class="input-wrapper">
                         <i class="fas fa-id-card-alt input-icon"></i>
-                        <input type="text" id="hospital-login-id" required value="HospitalAdmin"
-                            placeholder="Enter Staff ID">
+                        <input type="text" id="hospital-login-id" required value="HospitalAdmin" placeholder="Enter Staff ID">
                     </div>
                 </div>
                 <div class="input-group">
                     <label for="hospital-login-password">Password</label>
                     <div class="input-wrapper">
                         <i class="fas fa-key input-icon"></i>
-                        <input type="password" id="hospital-login-password" required value="admin123"
-                            placeholder="Enter password">
+                        <input type="password" id="hospital-login-password" required value="admin123" placeholder="Enter password">
                     </div>
                 </div>
 
@@ -386,6 +435,62 @@
 
                 <div class="form-footer">
                     <button type="button" class="back-btn" onclick="showForm('choice-container')">← Back</button>
+                    <p class="form-note">New hospital? <a href="#" onclick="showForm('hospital-register-container'); return false;">Register here</a></p>
+                </div>
+            </form>
+        </div>
+
+        <div id="hospital-register-container" class="form-container" style="display:none;">
+            <form class="auth-form" onsubmit="registerHospital(event); return false;">
+                <h2>Hospital Registration</h2>
+                <p class="form-subtitle">Upload proof & location for verification</p>
+
+                <div class="input-group">
+                    <label for="hosp-name">Hospital Name</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-hospital input-icon"></i>
+                        <input type="text" id="hosp-name" required placeholder="e.g. Jeevrakshak General Hospital">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="hosp-email">Contact Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="hosp-email" required placeholder="admin@hospital.example">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="hosp-pass">Create Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="hosp-pass" required placeholder="Secure password">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="hosp-proof">Upload Valid Proof (Image / PDF)</label>
+                    <input type="file" id="hosp-proof" accept="image/*,application/pdf" required>
+                </div>
+
+                <div class="coords-row">
+                    <div class="input-group">
+                        <label for="hosp-lat">Latitude</label>
+                        <input type="number" id="hosp-lat" step="any" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="hosp-lng">Longitude</label>
+                        <input type="number" id="hosp-lng" step="any" required>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button type="submit" class="submit-btn hospital-btn">Submit for Verification</button>
+                </div>
+
+                <div class="form-footer">
+                    <button type="button" class="back-btn" onclick="showForm('choice-container')">← Back</button>
                 </div>
             </form>
         </div>
@@ -393,5 +498,4 @@
     </div>
 
 </body>
-
 </html>
