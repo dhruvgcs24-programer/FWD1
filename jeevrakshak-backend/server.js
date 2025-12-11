@@ -40,34 +40,12 @@ async function connectToMongo() {
         await client.connect();
         db = client.db(DB_NAME);
         console.log(`Successfully connected to MongoDB! Database: ${DB_NAME}`);
-        await ensureAdminHospitalUser(); // Ensure a hospital exists for routing
     } catch (e) {
         console.error("Could not connect to MongoDB:", e);
         process.exit(1);
     }
 }
 
-async function ensureAdminHospitalUser() {
-    const usersCollection = db.collection('users');
-    const hospital = await usersCollection.findOne({ role: 'hospital', username: 'HospitalAdmin' });
-
-    if (!hospital) {
-        console.log("Creating default HospitalAdmin user.");
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        await usersCollection.insertOne({
-            username: 'HospitalAdmin',
-            password: hashedPassword,
-            role: 'hospital',
-            location: { // Default Bengaluru location for testing
-                lat: 12.9716,
-                lng: 77.5946
-            },
-            status: 'APPROVED',
-            hospitalId: "HSP-ADMIN-000"
-        });
-        console.log("HospitalAdmin created with password 'admin123'.");
-    }
-}
 
 // --- Location & Distance Utility ---
 
