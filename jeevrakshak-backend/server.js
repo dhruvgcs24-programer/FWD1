@@ -253,6 +253,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         // 1. Update user location upon successful login
+        // NOTE: This logic prevents location update if 'location' is not in the request body (as modified in login.html for hospitals)
         const updateDoc = {};
         if (location && (role === 'patient' || role === 'hospital')) {
             updateDoc.location = location;
