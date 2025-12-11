@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Jeevrakshak Login</title>
-    <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,10 +36,19 @@
             if (document.getElementById('patient-reg-location-status')) {
                 document.getElementById('patient-reg-location-status').textContent = 'Location not set.';
             }
+            // Reset hospital registration status element
+            if (document.getElementById('hosp-reg-location-status')) {
+                document.getElementById('hosp-reg-location-status').innerHTML = 'Location required *';
+                const latEl = document.getElementById('hosp-lat');
+                const lngEl = document.getElementById('hosp-lng');
+                if (latEl) latEl.value = '';
+                if (lngEl) lngEl.value = '';
+            }
         }
 
         function redirectToDashboard(role, username, token) {
             localStorage.setItem('auth_token', token);
+            // Location is no longer stored here for hospital
             if (role === 'patient') {
                 localStorage.setItem('current_patient_name', username);
                 window.location.href = 'patient.html';
@@ -105,6 +113,51 @@
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
+        
+        // --- GEOLOCATION HELPER FUNCTIONS FOR HOSPITAL REGISTRATION ---
+        function getHospitalLocation(latId, lngId) {
+            const latElement = document.getElementById(latId);
+            const lngElement = document.getElementById(lngId);
+            // Use an ID that is specific to the registration form for status
+            const statusId = 'hosp-reg-location-status'; 
+            const statusElement = document.getElementById(statusId);
+
+            if (!latElement || !lngElement || !statusElement) {
+                console.error(`One or more hospital location elements not found.`);
+                return;
+            }
+
+            statusElement.innerHTML = 'Fetching location... <i class="fas fa-spinner fa-spin"></i>';
+
+            if (!navigator.geolocation) {
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i> Geolocation is not supported.';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    latElement.value = lat;
+                    lngElement.value = lng;
+                    statusElement.innerHTML = `<i class="fas fa-check-circle" style="color:#51cf66;"></i> Location set! (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+                },
+                (error) => {
+                    let errorMessage = 'Location access denied or failed.';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMessage = 'Permission Denied. Please enable location services.';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMessage = 'Position unavailable. Check your connection or signal.';
+                    }
+
+                    statusElement.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#ff6b6b;"></i> ${errorMessage}`;
+                    console.error("Geolocation Error:", error);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
 
         // --- HANDLER FUNCTIONS ---
 
@@ -180,19 +233,19 @@
             }
         }
 
-        // 3. Hospital Login Handler
+        // 3. Hospital Login Handler - MODIFIED TO NOT SEND LOCATION
         async function handleHospitalLogin(event) {
             event.preventDefault();
             const username = document.getElementById('hospital-login-id').value.trim();
             const password = document.getElementById('hospital-login-password').value;
-            const lat = document.getElementById('hospital-latitude').value;
-            const lng = document.getElementById('hospital-longitude').value;
+            // Location inputs removed, so no variables for lat/lng are needed.
+            // The server will use the location stored in DB during registration.
 
             const loginBody = {
                 username,
                 password,
                 role: 'hospital',
-                location: { lat: parseFloat(lat), lng: parseFloat(lng) }
+                // Removed location object: relies on DB data
             };
 
             try {
@@ -205,10 +258,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Store Hospital Location for back-end Admission routing
-                    localStorage.setItem('hospital_latitude', lat);
-                    localStorage.setItem('hospital_longitude', lng);
-
+                    // Removed location storage
                     redirectToDashboard('hospital', data.username, data.token);
                 } else {
                     alert(`Login failed: ${data.message}`);
@@ -244,7 +294,7 @@
             const lng = document.getElementById("hosp-lng").value;
 
             if (!name || !email || !password || !lat || !lng) {
-                alert("Please fill all fields.");
+                alert("Please ensure all fields are filled, and click 'Get Hospital Location'.");
                 return;
             }
 
@@ -288,7 +338,6 @@
 
 <body onload="showForm('choice-container')">
 
-    <!-- Background Elements -->
     <div class="background-shapes">
         <div class="shape shape-1"></div>
         <div class="shape shape-2"></div>
@@ -407,25 +456,14 @@
                     <label for="hospital-login-id">Admin ID</label>
                     <div class="input-wrapper">
                         <i class="fas fa-id-card-alt input-icon"></i>
-                        <input type="text" id="hospital-login-id" required value="HospitalAdmin" placeholder="Enter Staff ID">
+                        <input type="text" id="hospital-login-id"  placeholder="Enter Staff ID">
                     </div>
                 </div>
                 <div class="input-group">
                     <label for="hospital-login-password">Password</label>
                     <div class="input-wrapper">
                         <i class="fas fa-key input-icon"></i>
-                        <input type="password" id="hospital-login-password" required value="admin123" placeholder="Enter password">
-                    </div>
-                </div>
-
-                <div class="coords-row">
-                    <div class="input-group">
-                        <label for="hospital-latitude">Latitude</label>
-                        <input type="text" id="hospital-latitude" value="12.9716" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="hospital-longitude">Longitude</label>
-                        <input type="text" id="hospital-longitude" value="77.5946" required>
+                        <input type="password" id="hospital-login-password"  placeholder="Enter password">
                     </div>
                 </div>
 
@@ -474,15 +512,21 @@
                     <input type="file" id="hosp-proof" accept="image/*,application/pdf" required>
                 </div>
 
-                <div class="coords-row">
-                    <div class="input-group">
-                        <label for="hosp-lat">Latitude</label>
-                        <input type="number" id="hosp-lat" step="any" required>
+                <div class="geo-section required">
+                    <button type="button" class="geo-btn" onclick="getHospitalLocation('hosp-lat', 'hosp-lng')">
+                        <i class="fas fa-map-marker-alt"></i> Get Hospital Location
+                    </button>
+                    <div class="coords-row">
+                        <div class="input-group">
+                            <label for="hosp-lat">Latitude</label>
+                            <input type="number" id="hosp-lat" step="any" required readonly> 
+                        </div>
+                        <div class="input-group">
+                            <label for="hosp-lng">Longitude</label>
+                            <input type="number" id="hosp-lng" step="any" required readonly>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label for="hosp-lng">Longitude</label>
-                        <input type="number" id="hosp-lng" step="any" required>
-                    </div>
+                    <p id="hosp-reg-location-status" class="status-text">Location required *</p>
                 </div>
 
                 <div class="action-buttons">
