@@ -29,7 +29,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* For shapes */
+    overflow-y: auto;   /* Allows vertical scrolling only when content overflows */
+    overflow-x: hidden; /* Prevents unwanted horizontal scrolling */
     position: relative;
     padding: 20px;
 }
