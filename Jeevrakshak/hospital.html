@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jeevrakshak Hospital Dashboard</title>
-    <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -33,10 +32,8 @@
         </nav>
     </header>
 
-    <!-- Main Dashboard -->
     <main class="dashboard" id="main-dashboard-view">
         <div class="dashboard-grid">
-            <!-- Left Main Column -->
             <div class="left-column">
 
                 <section class="card critical-alerts glass-panel" id="critical-alerts-card">
@@ -117,47 +114,53 @@
                             <label for="cylinder-quantity"><i class="fas fa-lungs"></i> Oxygen Supply</label>
                             <div class="control-row">
                                 <input type="number" id="cylinder-quantity" value="5" min="1" max="50">
-                                <button class="request-btn" onclick="requestCylinders()">Order</button>
+                                <button class="request-btn" onclick="requestCylinders()">Request</button>
                             </div>
                         </div>
                     </div>
                 </section>
-
             </div>
 
-            <!-- Right Side Column -->
             <div class="right-column">
-                <section class="card staff-schedule glass-panel">
-                    <h2>Today's Shift</h2>
-                    <div class="schedule-list">
-                        <div class="schedule-item">
-                            <div class="time-block">09:00</div>
-                            <div class="schedule-details">
-                                <h4>Dr. Agarwal</h4>
-                                <p>Morning Rounds • Ward A</p>
-                            </div>
+                <section class="card staff-at-glance glass-panel">
+                    <div class="card-header-row">
+                        <h2>Staff Overview</h2>
+                        <button class="action-btn-small" id="add-staff-btn"><i class="fas fa-user-plus"></i> Add
+                            Staff</button>
+                    </div>
+                    <div class="staff-summary-grid">
+                        <div class="staff-count doctor">
+                            <i class="fas fa-user-md"></i>
+                            <span id="staff-doctors-count">0</span>
+                            <small>Doctors</small>
                         </div>
-                        <div class="schedule-item active-now">
-                            <div class="time-block">13:00</div>
-                            <div class="schedule-details">
-                                <h4>Surgery Team</h4>
-                                <p>Operating Room 3 • <span class="status-live">Live</span></p>
-                            </div>
+                        <div class="staff-count nurse">
+                            <i class="fas fa-user-nurse"></i>
+                            <span id="staff-nurses-count">0</span>
+                            <small>Nurses</small>
                         </div>
-                        <div class="schedule-item">
-                            <div class="time-block">17:30</div>
-                            <div class="schedule-details">
-                                <h4>Nurses Meeting</h4>
-                                <p>Staff Room 2</p>
-                            </div>
+                        <div class="staff-count admin">
+                            <i class="fas fa-user-tie"></i>
+                            <span id="staff-admins-count">0</span>
+                            <small>Admin</small>
                         </div>
                     </div>
                 </section>
 
-                <section class="card weather-card glass-panel">
-                    <h2>Environment</h2>
-                    <div class="weather-display">
-                        <i class="fas fa-cloud-sun weather-icon"></i>
+                <section class="card daily-task-list glass-panel">
+                    <h2>Daily Tasks</h2>
+                    <ul class="task-list">
+                        <li class="task-item completed">Review discharge reports <i class="fas fa-check-circle"></i></li>
+                        <li class="task-item">Morning rounds in Ward A <i class="fas fa-clock"></i></li>
+                        <li class="task-item">Log inventory count <i class="fas fa-clock"></i></li>
+                        <li class="task-item completed">Approve staff shifts <i class="fas fa-check-circle"></i></li>
+                    </ul>
+                </section>
+
+                <section class="card weather-report glass-panel">
+                    <h2>Weather & Environment</h2>
+                    <div class="weather-box">
+                        <i class="fas fa-sun weather-icon"></i>
                         <div class="weather-data">
                             <span class="temp">32°C</span>
                             <span class="condition">Sunny</span>
@@ -171,15 +174,19 @@
                         <p class="aqi-desc">Ideal conditions for outdoor therapy sessions.</p>
                     </div>
                 </section>
+                
+                <section class="card logout-card glass-panel">
+                    <button class="action-btn danger-action-btn full-width" id="logout-hospital-btn">
+                         <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </section>
             </div>
         </div>
     </main>
 
-    <!-- Detailed Patient View -->
     <section class="full-screen-view hidden-view" id="patient-details-view" style="display: none;">
         <div class="view-header">
-            <button class="back-link" id="back-to-dashboard-from-patient-btn"><i class="fas fa-arrow-left"></i>
-                Dashboard</button>
+            <button class="back-link" id="back-to-dashboard-from-patient-btn"><i class="fas fa-arrow-left"></i> Dashboard</button>
             <h2>Comprehensive Patient Report</h2>
         </div>
         <div class="report-content glass-panel-large">
@@ -192,92 +199,65 @@
                             <th>Age</th>
                             <th>Ward/Bed</th>
                             <th>Condition</th>
-                            <th>Last Update</th>
+                            <th>Admitted At</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="patient-details-table-body">
-                        <!-- JS Populates -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
     </section>
 
-    <!-- Staffing Report View -->
-    <section class="full-screen-view hidden-view" id="staffing-report-view" style="display: none;">
+    <section class="full-screen-view hidden-view" id="single-patient-profile-view" style="display: none;">
         <div class="view-header">
-            <button class="back-link" id="back-to-dashboard-btn"><i class="fas fa-arrow-left"></i> Dashboard</button>
-            <h2>Staffing & Resource Report</h2>
-            <h2>Hospital Staffing Report</h2>
-            <button class="submit-btn primary-action-btn" id="add-staff-btn">
-                <i class="fas fa-plus-circle"></i> Add New Staff
-            </button>
+            <button class="back-link" id="back-to-patient-list-from-profile-btn"><i class="fas fa-arrow-left"></i> Patient List</button>
+            <h2 id="patient-details-header">Comprehensive Patient Report</h2>
         </div>
-
-        <div class="staffing-summary-cards">
-            <div class="summary-stat-card">
-                <h3>Doctors On-Call</h3>
-                <p id="staff-doctors-count" class="stat-big">--</p>
-            </div>
-            <div class="summary-stat-card">
-                <h3>Nurses Active</h3>
-                <p id="staff-nurses-count" class="stat-big">--</p>
-            </div>
-            <div class="summary-stat-card">
-                <h3>Admin Staff</h3>
-                <p id="staff-admins-count" class="stat-big">--</p>
-            </div>
-        </div>
-
+        
         <div class="report-content glass-panel-large">
-            <h3 class="subsection-title">Detailed Staff Roster</h3>
-            <div class="table-container">
-                <table class="modern-table">
-                    <thead>
-                        <tr>
-                            <th>Staff ID</th>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th>Shift Status</th>
-                            <th>Contact</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="staffing-table-body">
-                        <!-- JS Populates -->
-                    </tbody>
-                </table>
+            <div class="profile-actions-row">
+                <button class="action-btn primary-action-btn" id="write-prescription-btn"><i class="fas fa-file-prescription"></i> Write Prescription</button>
+                <button class="action-btn danger-action-btn" id="delete-patient-btn"><i class="fas fa-trash"></i> Discharge/Delete Patient</button>
+            </div>
+
+            <div class="patient-profile-details">
+                <h3 class="section-title"><i class="fas fa-user-circle"></i> Patient Profile</h3>
+                <div id="patient-basic-info" class="detail-grid">
+                    </div>
+                
+                <h3 class="section-title"><i class="fas fa-pills"></i> Prescription History</h3>
+                <div id="patient-prescription-history">
+                    <p class="empty-list-message">Loading prescription history...</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Admission Form View -->
-    <section class="center-modal-view hidden-view" id="patient-admission-view" style="display: none;">
-        <div class="modal-card glass-panel">
-            <div class="modal-header-row">
-                <h2><i class="fas fa-user-plus"></i> Patient Admission</h2>
-                <button class="close-modal-clean" id="back-to-dashboard-from-admission-btn"><i
-                        class="fas fa-times"></i></button>
-            </div>
-
-            <form class="modern-form" id="patient-admission-form">
+    <section class="full-screen-view hidden-view" id="patient-admission-view" style="display: none;">
+        <div class="view-header">
+            <button class="back-link" id="back-to-dashboard-from-admission-btn"><i class="fas fa-arrow-left"></i> Dashboard</button>
+            <h2>Admit New Patient</h2>
+        </div>
+        <div class="form-container glass-panel-large">
+            <form id="patient-admission-form" class="admission-form">
                 <div class="form-grid">
                     <div class="input-group">
-                        <label for="new-patient-id">Patient ID</label>
-                        <input type="text" id="new-patient-id" required placeholder="Generate ID...">
+                        <label for="new-patient-id">Hospital ID</label>
+                        <input type="text" id="new-patient-id" placeholder="HOSP001" required>
                     </div>
                     <div class="input-group">
                         <label for="new-patient-name">Full Name</label>
-                        <input type="text" id="new-patient-name" required placeholder="Patient Name">
+                        <input type="text" id="new-patient-name" required placeholder="Jane Doe">
                     </div>
                     <div class="input-group">
                         <label for="new-patient-age">Age</label>
-                        <input type="number" id="new-patient-age" min="0" max="120" required placeholder="Years">
+                        <input type="number" id="new-patient-age" required min="1" max="120" placeholder="35">
                     </div>
                     <div class="input-group">
-                        <label for="new-patient-ward">Ward / Bed</label>
-                        <input type="text" id="new-patient-ward" required placeholder="Ward A - 01">
+                        <label for="new-patient-ward">Ward / Room</label>
+                        <input type="text" id="new-patient-ward" required placeholder="A-101 / ICU-3">
                     </div>
                     <div class="input-group full-width">
                         <label for="new-patient-condition">Initial Condition</label>
@@ -290,22 +270,68 @@
                     </div>
                 </div>
 
-                <button type="submit" class="submit-btn primary-action-btn" id="submit-admission-btn">Confirm
-                    Admission</button>
+                <button type="submit" class="submit-btn primary-action-btn">
+                    <i class="fas fa-bed"></i> Admit Patient
+                </button>
             </form>
         </div>
     </section>
-    <section id="staff-admission-view" class="dashboard-view form-modal" style="display: none;">
-        <div class="form-content">
-            <div class="modal-header">
-                <h2>Add New Staff Member</h2>
-                <button class="close-modal-clean" id="back-to-staff-report-btn"><i class="fas fa-times"></i></button>
+    
+    <section class="full-screen-view hidden-view" id="staffing-report-view" style="display: none;">
+        <div class="view-header">
+            <button class="back-link" id="back-to-dashboard-btn"><i class="fas fa-arrow-left"></i> Dashboard</button>
+            <h2>Hospital Staffing Report</h2>
+            <button class="action-btn-small" id="add-staff-report-btn"><i class="fas fa-user-plus"></i> Add Staff</button>
+        </div>
+        <div class="report-content glass-panel-large">
+             <div class="staff-summary-grid large-summary">
+                <div class="staff-count doctor">
+                    <i class="fas fa-user-md"></i>
+                    <span id="staff-doctors-count">0</span>
+                    <small>Doctors</small>
+                </div>
+                <div class="staff-count nurse">
+                    <i class="fas fa-user-nurse"></i>
+                    <span id="staff-nurses-count">0</span>
+                    <small>Nurses</small>
+                </div>
+                <div class="staff-count admin">
+                    <i class="fas fa-user-tie"></i>
+                    <span id="staff-admins-count">0</span>
+                    <small>Admin</small>
+                </div>
             </div>
-            <form id="staff-admission-form">
+            
+            <div class="table-container table-staff">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Staff ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Shift Status</th>
+                            <th>Contact</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffing-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="full-screen-view hidden-view" id="staff-admission-view" style="display: none;">
+        <div class="view-header">
+            <button class="back-link" id="back-to-staff-report-btn"><i class="fas fa-arrow-left"></i> Staffing Report</button>
+            <h2>Onboard New Staff Member</h2>
+        </div>
+        <div class="form-container glass-panel-large">
+            <form id="staff-admission-form" class="admission-form">
                 <div class="form-grid">
                     <div class="input-group">
                         <label for="new-staff-id">Staff ID</label>
-                        <input type="text" id="new-staff-id" required placeholder="S-001">
+                        <input type="text" id="new-staff-id" placeholder="S001" required>
                     </div>
                     <div class="input-group">
                         <label for="new-staff-name">Full Name</label>
@@ -336,6 +362,28 @@
             </form>
         </div>
     </section>
+    
+    <div id="prescription-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>Write Prescription for <span id="prescribe-patient-name"></span></h3>
+                <button class="close-modal-clean" onclick="document.getElementById('prescription-modal').style.display='none'">&times;</button>
+            </div>
+            <form id="prescription-form">
+                <input type="hidden" id="prescribe-patient-id">
+                <div class="input-group full-width">
+                    <label for="prescription-doctor-name">Doctor's Name (Optional)</label>
+                    <input type="text" id="prescription-doctor-name" placeholder="Dr. John Smith">
+                </div>
+                <div class="input-group full-width">
+                    <label for="prescription-text">Prescription Details</label>
+                    <textarea id="prescription-text" rows="8" required placeholder="e.g. 1. Paracetamol 500mg, 1 tablet twice daily for 3 days. 2. Rest for 2 days."></textarea>
+                </div>
+                <button type="submit" class="submit-btn primary-action-btn"><i class="fas fa-save"></i> Save Prescription</button>
+            </form>
+        </div>
+    </div>
+
 
     <script src="hospital.js"></script>
 </body>

@@ -1,4 +1,4 @@
-// hospital.js (FINALIZED API-DRIVEN LOGIC with Staff Admission, Deletion, and PRESCRIPTION WORKFLOW)
+// hospital.js (FINALIZED API-DRIVEN LOGIC with Staff Admission, Deletion, and PATIENT WORKFLOW)
 
 // --- Global Configuration ---
 const API_URL = 'http://localhost:3000/api';
@@ -238,44 +238,35 @@ function renderBookNowQueue(requests) {
 }
 
 
-// --- PRESCRIPTION WORKFLOW FUNCTIONS (NEW/MODIFIED) ---
+// --- 2. Queue Resolution Functions (Using PROMPT for quick action on dashboard - Kept as is) ---
 
-// 1. New Entry point for Resolution (replaces old resolveRequest)
-async function resolveRequestStart(requestId, patientName) {
+// Entry point for Resolution using a simple prompt (used for dashboard queue)
+function resolveRequestStart(requestId, patientName) {
      if (!confirm(`Do you want to write a prescription for ${patientName} and resolve request ID: ${requestId}?`)) {
          return;
      }
 
-    // Move to the function that handles the prescription input
-    showPrescriptionModal(requestId, patientName);
-}
-
-// 2. New Function to Show Prescription Input (Simulation via prompt)
-function showPrescriptionModal(requestId, patientName) {
-    // In a real app, this would be a custom HTML modal with form inputs.
-    // We use a simple prompt for simulation.
-    const prescriptionText = prompt(`Enter PRESCRIPTION for ${patientName} (Request ID: ${requestId}):\n\nExample: Paracetamol (500mg) - 2x daily for 3 days.\n\nNOTE: Press Cancel to abort resolution.`);
+    const prescriptionText = prompt(`Enter PRESCRIPTION for ${patientName} (Request ID: ${requestId}):\n\nNOTE: Press Cancel to abort resolution.`);
 
     if (prescriptionText) {
-        // If the user enters a prescription, call the next step
-        givePrescription(requestId, patientName, prescriptionText);
+        givePrescriptionAndResolve(requestId, patientName, prescriptionText);
     } else if (prescriptionText === "") {
         alert("Prescription cannot be empty. Request was not resolved.");
     } else {
-        // User clicked 'Cancel' on the prompt, do nothing.
         console.log(`Prescription cancelled for request ${requestId}. Resolution aborted.`);
     }
 }
 
-// 3. New Function to Save Prescription & Resolve Request
-async function givePrescription(requestId, patientName, prescriptionText) {
+
+// Function to Save Prescription & Resolve Request (used for dashboard queue - Kept as is)
+async function givePrescriptionAndResolve(requestId, patientName, prescriptionText) {
     
     // 1. Prepare Prescription Data
     const prescriptionData = {
         requestId: requestId,
         patientName: patientName,
         prescription: prescriptionText,
-        // The patient ID would ideally be fetched from the request object in a real app
+        doctorName: 'Queue Resolution Staff' 
     };
 
     try {
@@ -300,7 +291,7 @@ async function givePrescription(requestId, patientName, prescriptionText) {
         // --- STEP 2: RESOLVE REQUEST (DELETE FROM QUEUE) ---
         console.log("Resolving request and deleting from queue...");
         const resolveResponse = await fetch(`${API_URL}/doctor-request/${requestId}/resolve`, {
-            method: 'PUT', // The endpoint in server.js uses PUT
+            method: 'PUT', 
             headers: getAuthHeaders(),
         });
 
@@ -335,7 +326,7 @@ async function loadAndRenderRequests() {
 
 // --- 3. Patient and Staff View Functions ---
 
-// Renders the patient list from the API
+// Renders the patient list from the API 
 async function renderPatientList() {
     const patients = await fetchPatients();
     
@@ -349,34 +340,223 @@ async function renderPatientList() {
         return;
     }
 
-    patients.forEach(patient => {
+    patients.forEach(p => {
         const row = tableBody.insertRow();
         
-        // Map backend field names to frontend display
-        const patientID = patient.id || patient._id; 
-        const patientName = patient.name;
-        const patientAge = patient.age;
-        const patientRoom = patient.ward; 
-        const patientCondition = patient.initialCondition;
-        const patientAdmittedAt = new Date(patient.admittedAt).toLocaleDateString();
+        const patientID = p.id || p._id; 
+        const patientName = p.name;
+        const patientAge = p.age;
+        const patientWard = p.ward; 
+        const patientCondition = p.initialCondition;
+        const patientAdmittedAt = new Date(p.admittedAt).toLocaleDateString();
         
         const conditionClass = `status-badge ${patientCondition.toLowerCase()}-priority`;
+        const patientMongoId = p._id; 
 
         row.innerHTML = `
             <td>${patientID}</td>
             <td>${patientName}</td>
             <td>${patientAge}</td>
-            <td>${patientRoom}</td>
+            <td>${patientWard}</td>
             <td><span class="${conditionClass}">${patientCondition}</span></td>
             <td>${patientAdmittedAt}</td>
             <td>
-                <button class="action-btn detail">View Profile</button>
+                <button class="action-btn detail" onclick="viewPatientProfile('${patientMongoId}')">View Profile</button>
+                <button class="action-btn primary-action-btn" onclick="showPatientPrescriptionModal('${patientMongoId}', '${patientName}')">Prescribe</button>
+                <button class="action-btn danger-action-btn" onclick="deletePatient('${patientMongoId}', '${patientName}')">Delete</button>
             </td>
         `;
     });
     
     showView('patient-details-view');
 }
+
+// Function to view a patient's profile (UPDATED to fetch and render prescription history)
+async function viewPatientProfile(patientId) {
+    try {
+        const response = await fetch(`${API_URL}/patients/${patientId}/details`, { headers: getAuthHeaders() });
+
+        if (response.status === 404) {
+             alert('Patient not found.');
+             renderPatientList();
+             return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const patient = await response.json();
+        
+        // Populate header and action buttons
+        const patientHeader = document.getElementById('patient-details-header');
+        if (patientHeader) patientHeader.textContent = `Comprehensive Report for ${patient.name}`;
+
+        const writePrescriptionBtn = document.getElementById('write-prescription-btn');
+        if (writePrescriptionBtn) writePrescriptionBtn.onclick = () => showPatientPrescriptionModal(patient._id, patient.name);
+        
+        const deletePatientBtn = document.getElementById('delete-patient-btn');
+        if (deletePatientBtn) deletePatientBtn.onclick = () => deletePatient(patient._id, patient.name);
+        
+        // Populate basic info 
+        const basicInfoDiv = document.getElementById('patient-basic-info');
+        if(basicInfoDiv) {
+            basicInfoDiv.innerHTML = `
+                <p><strong>Patient ID:</strong> ${patient.id || patient._id}</p>
+                <p><strong>Patient Name:</strong> ${patient.name}</p>
+                <p><strong>Age/Gender:</strong> ${patient.age} / ${patient.gender || 'N/A'}</p>
+                <p><strong>Contact:</strong> ${patient.contact || 'N/A'}</p>
+                <p><strong>Admitted At:</strong> ${new Date(patient.admittedAt).toLocaleDateString()}</p>
+                <p><strong>Ward/Room:</strong> ${patient.ward}</p>
+                <p><strong>Primary Ailment:</strong> ${patient.primaryAilment || 'N/A'}</p>
+                <p><strong>Initial Condition:</strong> <span class="status-badge ${patient.initialCondition.toLowerCase()}-status">${patient.initialCondition}</span></p>
+            `;
+        }
+
+        // Populate prescription history
+        const prescriptionsDiv = document.getElementById('patient-prescription-history');
+        if(prescriptionsDiv) {
+            prescriptionsDiv.innerHTML = ''; 
+            
+            if (patient.prescriptions && patient.prescriptions.length > 0) {
+                // Sort by date descending
+                patient.prescriptions.sort((a, b) => new Date(b.prescribedAt) - new Date(a.prescribedAt));
+                
+                patient.prescriptions.forEach(p => {
+                    const date = new Date(p.prescribedAt).toLocaleDateString();
+                    const time = new Date(p.prescribedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    prescriptionsDiv.innerHTML += `
+                        <div class="prescription-card glass-panel-sm">
+                            <div class="header">
+                                <i class="fas fa-pills"></i>
+                                <div class="details">
+                                    <h4>Prescribed by Dr. ${p.doctor || 'Hospital Staff'}</h4>
+                                    <span class="date">${date} at ${time}</span>
+                                </div>
+                            </div>
+                            <p class="prescription-text">${p.prescription.replace(/\n/g, '<br>')}</p>
+                        </div>
+                    `;
+                });
+            } else {
+                prescriptionsDiv.innerHTML = '<p class="empty-list-message">No prescription history found for this patient.</p>';
+            }
+        }
+
+        // Switch view to the single patient profile
+        showView('single-patient-profile-view');
+        
+    } catch (error) {
+        console.error('View Patient Profile Error:', error);
+        alert('Failed to fetch patient details. Ensure /api/patients/:id/details is available.');
+    }
+}
+
+// Function to show the prescription modal for ADMITTED PATIENTS (NEW - uses HTML modal)
+function showPatientPrescriptionModal(patientId, patientName) {
+    const modal = document.getElementById('prescription-modal');
+    if (!modal) {
+        console.error("Prescription modal element not found.");
+        return alert("Prescription modal not found in HTML. Check hospital.html structure.");
+    }
+
+    document.getElementById('prescribe-patient-id').value = patientId;
+    document.getElementById('prescribe-patient-name').textContent = patientName;
+    
+    const form = document.getElementById('prescription-form');
+    if(form) form.reset();
+
+    modal.style.display = 'flex';
+}
+
+// Function to handle prescription submission for ADMITTED PATIENTS (NEW)
+async function submitPatientPrescription(event) {
+    event.preventDefault();
+
+    const patientId = document.getElementById('prescribe-patient-id').value;
+    const patientName = document.getElementById('prescribe-patient-name').textContent;
+    const prescriptionText = document.getElementById('prescription-text').value;
+    const doctorName = document.getElementById('prescription-doctor-name').value || 'Hospital Staff';
+    
+    if (!prescriptionText) {
+        alert('Prescription details cannot be empty.');
+        return;
+    }
+
+    try {
+        // Assumes the new /api/prescribe route exists on the server.
+        const response = await fetch(`${API_URL}/prescribe`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ patientId, patientName, prescriptionText, doctorName })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`Prescription saved for ${patientName} successfully.`);
+        document.getElementById('prescription-modal').style.display = 'none';
+        
+        // Refresh the profile view if the user is currently on it
+        if (document.getElementById('single-patient-profile-view').style.display === 'block') {
+             viewPatientProfile(patientId); 
+        } else {
+             renderPatientList();
+        }
+       
+    } catch (error) {
+        console.error('Submit Patient Prescription Error:', error);
+        alert('Failed to save prescription. Check the server and console.');
+    }
+}
+
+// Function to delete a patient (NEW)
+async function deletePatient(patientId, patientName) {
+    if (!confirm(`Are you sure you want to discharge and delete the record for patient ${patientName}? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        // Assumes /api/patients/:id DELETE route exists on the server.
+        const response = await fetch(`${API_URL}/patients/${patientId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (response.status === 404) {
+             alert('Patient not found or already removed.');
+             renderPatientList();
+             return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        alert(`Patient ${patientName} record successfully discharged and deleted.`);
+        
+        // Return to the patient list after deletion
+        renderPatientList(); 
+    } catch (error) {
+        console.error('Delete Patient Error:', error);
+        alert('Failed to delete patient record. Check the server and console.');
+    }
+}
+
 
 // Sends patient admission data to the API
 async function admitPatient(event) {
@@ -412,9 +592,7 @@ async function admitPatient(event) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
         
-        const result = await response.json();
-        
-        alert(`Patient ${name} admitted successfully.`);
+        alert(`Patient ${name} admitted successfully. You can now prescribe or view profile.`);
         document.getElementById('patient-admission-form').reset();
         
         showDashboard(); 
@@ -424,7 +602,8 @@ async function admitPatient(event) {
     }
 }
 
-// Function to add new staff member 
+
+// Function to add new staff member
 async function addStaff(event) {
     event.preventDefault();
     
@@ -464,7 +643,7 @@ async function addStaff(event) {
     }
 }
 
-// Function to delete a staff member (NEW)
+// Function to delete a staff member
 async function deleteStaff(staffMongoId, staffName) {
     if (!confirm(`Are you sure you want to remove staff member ${staffName}? This action cannot be undone.`)) {
         return;
@@ -504,9 +683,9 @@ async function deleteStaff(staffMongoId, staffName) {
 }
 
 
-// Renders the staff list from the API
+// Renders the staff list from the API 
 async function showStaffingReport() {
-    const staff = await fetchStaff(); // <-- Fetch from API
+    const staff = await fetchStaff(); 
     
     const doctors = staff.filter(s => s.role.toLowerCase().includes('doctor') || s.role.toLowerCase().includes('physician') || s.role.toLowerCase().includes('surgeon'));
     const nurses = staff.filter(s => s.role.toLowerCase().includes('nurse'));
@@ -523,7 +702,6 @@ async function showStaffingReport() {
     tableBody.innerHTML = '';
     
     if (staff.length === 0) {
-        // Updated colspan to 6 to account for the new 'Actions' column
         tableBody.innerHTML = `<tr><td colspan="6" class="no-data-row">No staff records found for this hospital.</td></tr>`;
     } else {
         staff.forEach(s => {
@@ -590,13 +768,27 @@ function requestCylinders() {
 
 // --- 4. View Management Functions ---
 
+// Function to manage view visibility (UPDATED to include new views)
 function showView(viewId) {
     // All possible views must be hidden first
     document.getElementById('main-dashboard-view').style.display = 'none'; 
     document.getElementById('patient-details-view').style.display = 'none';
     document.getElementById('patient-admission-view').style.display = 'none';
     document.getElementById('staffing-report-view').style.display = 'none';
-    document.getElementById('staff-admission-view').style.display = 'none'; // <-- New Staff View
+    document.getElementById('staff-admission-view').style.display = 'none';
+    
+    // NEW VIEWS
+    const singlePatientProfileView = document.getElementById('single-patient-profile-view');
+    if (singlePatientProfileView) {
+        singlePatientProfileView.style.display = 'none';
+    }
+    
+    // NOTE: The prescription modal uses 'display: flex' for visibility
+    const prescriptionModal = document.getElementById('prescription-modal');
+    if (prescriptionModal) {
+        prescriptionModal.style.display = 'none';
+    }
+
 
     const requestedView = document.getElementById(viewId);
     if (requestedView) {
@@ -649,8 +841,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('staff-admission-form').addEventListener('submit', addStaff);
     
     const addStaffBtn = document.getElementById('add-staff-btn');
+    // Staffing Report View button
+    const addStaffReportBtn = document.getElementById('add-staff-report-btn');
+    
     if (addStaffBtn) {
         addStaffBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showView('staff-admission-view');
+        });
+    }
+    
+    if (addStaffReportBtn) {
+        addStaffReportBtn.addEventListener('click', (event) => {
             event.preventDefault();
             showView('staff-admission-view');
         });
@@ -663,6 +865,22 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             showStaffingReport();
         });
+    }
+    
+    // NEW Back button from single patient profile to patient list
+    const backToPatientListFromProfileBtn = document.getElementById('back-to-patient-list-from-profile-btn');
+    if (backToPatientListFromProfileBtn) {
+        backToPatientListFromProfileBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            renderPatientList(); 
+        });
+    }
+
+    // NEW Prescription Form Submission
+    const prescriptionForm = document.getElementById('prescription-form');
+    // FIX: Attach the correct submit handler for the HTML modal
+    if (prescriptionForm) {
+        prescriptionForm.addEventListener('submit', submitPatientPrescription);
     }
 
     // Navbar Links
@@ -677,7 +895,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Back Buttons (Navigation Fix)
-    // NOTE: The IDs used here must match the buttons in hospital.html
     document.getElementById('back-to-dashboard-from-patient-btn').addEventListener('click', (event) => {
         event.preventDefault();
         showDashboard();
