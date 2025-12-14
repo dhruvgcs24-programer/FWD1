@@ -389,6 +389,68 @@ cancelSosBtn.addEventListener('click', () => {
     sosModal.style.display = 'none';
 });
 
+// --- NEARBY SERVICES MAP LOGIC (New Feature) ---
+
+/**
+ * Gets the user's location via the browser's Geolocation API and opens Google Maps
+ * searching for the specified service type near those coordinates.
+ * @param {string} serviceType The query term (e.g., 'pharmacy', 'clinic').
+ */
+function openNearbyServiceMap(serviceType) {
+    if (navigator.geolocation) {
+        // Request the current position from the browser
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const encodedServiceType = encodeURIComponent(serviceType);
+                
+                // Construct the Google Maps URL to search for the service near the coordinates.
+                // Opens a search for the service type centered at the user's location (15z is zoom level).
+                const mapUrl = `https://www.google.com/maps/search/${encodedServiceType}/@${lat},${lng},15z`;
+                
+                // Open the map in a new tab
+                window.open(mapUrl, '_blank');
+            },
+            (error) => {
+                console.error("Error getting location:", error);
+
+                // Handle geolocation errors and provide a fallback
+                let message;
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        message = "Permission to access location was denied. Please allow location access to use this feature.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        message = "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        message = "The request to get user location timed out.";
+                        break;
+                    default:
+                        message = "An unknown error occurred while getting your location.";
+                        break;
+                }
+                alert(message);
+                
+                // Fallback: Open a general search for the service type near the user's general IP location
+                const fallbackUrl = `https://www.google.com/maps/search/${encodeURIComponent(serviceType + ' near me')}`;
+                window.open(fallbackUrl, '_blank');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        // Browser does not support Geolocation
+        alert("Geolocation is not supported by this browser. Opening a general search for " + serviceType + ".");
+        const fallbackUrl = `https://www.google.com/maps/search/${encodeURIComponent(serviceType + ' near me')}`;
+        window.open(fallbackUrl, '_blank');
+    }
+}
+
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -418,4 +480,15 @@ document.addEventListener('DOMContentLoaded', () => {
         patientProfileDiv.innerHTML = `<i class="fas fa-user-circle"></i> <span id="patient-name-display">${patientName}</span>`;
         patientProfileDiv.appendChild(logoutLink);
     }
+
+    // 7. Nearby Services Buttons (NEW)
+    document.getElementById('search-pharmacy-btn').addEventListener('click', (event) => {
+        const serviceType = event.currentTarget.getAttribute('data-service-type'); // 'pharmacy'
+        openNearbyServiceMap(serviceType);
+    });
+
+    document.getElementById('search-clinic-btn').addEventListener('click', (event) => {
+        const serviceType = event.currentTarget.getAttribute('data-service-type'); // 'clinic'
+        openNearbyServiceMap(serviceType);
+    });
 });

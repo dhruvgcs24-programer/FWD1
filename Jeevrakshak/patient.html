@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jeevrakshak Patient Portal</title>
-    <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -38,7 +37,6 @@
     </header>
 
     <main class="dashboard-container">
-        <!-- Full width grid -->
         <div class="dashboard-grid">
 
             <section class="left-column">
@@ -47,7 +45,6 @@
                     <h3>Today's Wellness</h3>
 
                     <div class="progress-layout-wrapper">
-                        <!-- Circular Progress -->
                         <div class="circle-container">
                             <div class="progress-circle">
                                 <div class="circle-inner">
@@ -57,7 +54,6 @@
                             </div>
                         </div>
 
-                        <!-- Stacked Bars -->
                         <div class="stats-container">
                             <div class="stat-item">
                                 <div class="stat-header">
@@ -119,22 +115,12 @@
                 <div class="card services-card glass-panel">
                     <h3><i class="fas fa-map-marked-alt"></i> Nearby Services</h3>
                     <div class="services-grid">
-                        <div class="service-item">
-                            <div class="icon-box pharmacy-bg"><i class="fas fa-pills"></i></div>
-                            <div class="service-info">
-                                <h4>Pharmacies</h4>
-                                <small>Apollo Pharmacy (0.5km)</small>
-                            </div>
-                            <button class="nav-btn"><i class="fas fa-location-arrow"></i></button>
-                        </div>
-                        <div class="service-item">
-                            <div class="icon-box clinic-bg"><i class="fas fa-user-md"></i></div>
-                            <div class="service-info">
-                                <h4>Clinics</h4>
-                                <small>City Care Clinic (1.2km)</small>
-                            </div>
-                            <button class="nav-btn"><i class="fas fa-location-arrow"></i></button>
-                        </div>
+                        <button id="search-pharmacy-btn" class="submit-request-btn" data-service-type="pharmacy">
+                            <i class="fas fa-prescription-bottle"></i> Nearby Pharmacies
+                        </button>
+                        <button id="search-clinic-btn" class="submit-request-btn" data-service-type="clinic" style="background-color: var(--accent-orange);">
+                            <i class="fas fa-hospital-alt"></i> Nearby Clinics
+                        </button>
                     </div>
                 </div>
             </section>
@@ -180,13 +166,11 @@
         </div>
     </main>
 
-    <!-- Floating Action Button -->
     <button class="sos-button">
         <span class="sos-text">SOS</span>
         <div class="pulse-ring"></div>
     </button>
 
-    <!-- Doctor Modal -->
     <div id="doctor-modal" class="modal">
         <div class="modal-content glass-panel">
             <span class="close-btn">&times;</span>
@@ -212,7 +196,6 @@
         </div>
     </div>
 
-    <!-- SOS Modal -->
     <div id="sos-modal" class="modal">
         <div class="modal-content glass-panel danger-theme">
             <span class="close-btn">&times;</span>

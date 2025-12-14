@@ -473,6 +473,72 @@ app.post('/api/admit-patient', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/staff', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+    try {
+        const { id, name, role, shift, contact } = req.body;
+
+        const newStaffRecord = {
+            hospitalId: req.user.id, // CRUCIAL: Links staff member to the hospital
+            staffId: id,
+            name,
+            role,
+            shift,
+            contact,
+            hiredAt: new Date()
+        };
+
+        await db.collection('hospitalStaff').insertOne(newStaffRecord);
+
+        res.status(201).json({ message: 'Staff member added successfully.', staff: newStaffRecord });
+    } catch (e) {
+        console.error('Add Staff Error:', e);
+        res.status(500).json({ message: 'Error adding staff member.' });
+    }
+});
+
+app.get('/api/staff', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+    try {
+        // Fetch only staff assigned to this hospital
+        const staff = await db.collection('hospitalStaff')
+            .find({ hospitalId: req.user.id }) // CRUCIAL: Only retrieve staff for this hospital
+            .sort({ role: 1, name: 1 })
+            .toArray();
+
+        res.json(staff);
+    } catch (e) {
+        console.error('Fetch Staff Error:', e);
+        res.status(500).json({ message: 'Error fetching staff list.' });
+    }
+});
+app.delete('/api/staff/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const staffIdToDelete = req.params.id;
+
+    try {
+        // Ensure you have imported ObjectId from 'mongodb' at the top of server.js
+        const result = await db.collection('hospitalStaff').deleteOne({
+            _id: new ObjectId(staffIdToDelete), // Use the MongoDB document ID
+            hospitalId: req.user.id          // CRUCIAL: Security filter - must belong to the logged-in hospital
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Staff member not found or does not belong to this hospital.' });
+        }
+
+        res.json({ message: 'Staff member removed successfully.' });
+    } catch (e) {
+        console.error('Delete Staff Error:', e);
+        // This handles cases where the ID provided is not a valid MongoDB format
+        if (e.name === 'BSONTypeError') {
+            return res.status(400).json({ message: 'Invalid Staff ID format.' });
+        }
+        res.status(500).json({ message: 'Error deleting staff member.' });
+    }
+});
+
 // GET /api/patients (View Patient Details Button)
 app.get('/api/patients', authenticateToken, async (req, res) => {
     if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
@@ -494,11 +560,12 @@ app.get('/api/patients', authenticateToken, async (req, res) => {
 app.get('/api/doctor-requests', authenticateToken, async (req, res) => {
     if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
     try {
-        // Fetch only requests routed to this hospital that are PENDING
-        // NOTE: for debugging the project earlier we returned all PENDING requests without filtering
         const requests = await db.collection('doctorRequests')
-            .find({ status: 'PENDING' }) // Consider adding hospitalId: req.user.id in production
-            .sort({ criticality: -1, timestamp: 1 }) // Prioritize High Criticality
+            .find({
+                status: 'PENDING',
+                hospitalId: req.user.id
+            })
+            .sort({ criticality: -1, timestamp: 1 })
             .toArray();
         res.json(requests);
     } catch (e) {
@@ -506,6 +573,8 @@ app.get('/api/doctor-requests', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Error fetching requests.' });
     }
 });
+
+
 
 // --- Server Start ---
 connectToMongo().then(() => {

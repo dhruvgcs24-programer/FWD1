@@ -209,6 +209,10 @@
         <div class="view-header">
             <button class="back-link" id="back-to-dashboard-btn"><i class="fas fa-arrow-left"></i> Dashboard</button>
             <h2>Staffing & Resource Report</h2>
+            <h2>Hospital Staffing Report</h2>
+            <button class="submit-btn primary-action-btn" id="add-staff-btn">
+                <i class="fas fa-plus-circle"></i> Add New Staff
+            </button>
         </div>
 
         <div class="staffing-summary-cards">
@@ -237,6 +241,7 @@
                             <th>Role</th>
                             <th>Shift Status</th>
                             <th>Contact</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="staffing-table-body">
@@ -287,6 +292,47 @@
 
                 <button type="submit" class="submit-btn primary-action-btn" id="submit-admission-btn">Confirm
                     Admission</button>
+            </form>
+        </div>
+    </section>
+    <section id="staff-admission-view" class="dashboard-view form-modal" style="display: none;">
+        <div class="form-content">
+            <div class="modal-header">
+                <h2>Add New Staff Member</h2>
+                <button class="close-modal-clean" id="back-to-staff-report-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="staff-admission-form">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="new-staff-id">Staff ID</label>
+                        <input type="text" id="new-staff-id" required placeholder="S-001">
+                    </div>
+                    <div class="input-group">
+                        <label for="new-staff-name">Full Name</label>
+                        <input type="text" id="new-staff-name" required placeholder="John Doe">
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="new-staff-role">Role</label>
+                        <input type="text" id="new-staff-role" required
+                            placeholder="Emergency Physician / Charge Nurse">
+                    </div>
+                    <div class="input-group">
+                        <label for="new-staff-shift">Shift</label>
+                        <select id="new-staff-shift" required>
+                            <option value="Day">Day</option>
+                            <option value="Night">Night</option>
+                            <option value="On-Call">On-Call</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="new-staff-contact">Contact/Extension</label>
+                        <input type="text" id="new-staff-contact" required placeholder="x101 or 9876543210">
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn primary-action-btn" id="submit-staff-btn">
+                    <i class="fas fa-user-plus"></i> Add Staff Member
+                </button>
             </form>
         </div>
     </section>

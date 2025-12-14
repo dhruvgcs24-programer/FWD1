@@ -1,4 +1,4 @@
-// hospital.js (COMPLETE AND FINAL CODE)
+// hospital.js (FINALIZED API-DRIVEN LOGIC with Staff Admission and Deletion)
 
 // --- Global Configuration ---
 const API_URL = 'http://localhost:3000/api';
@@ -51,51 +51,7 @@ function formatTimeDifference(timestamp) {
 }
 
 
-// --- 1. Demo Data Functions (Dynamic Data Source) ---
-
-const INITIAL_PATIENTS = [
-    { id: 'P1001', name: 'Karan S.', age: 34, room: 'A-101', condition: 'Critical', lastUpdate: '10 min ago' },
-    { id: 'P1002', name: 'Ria V.', age: 67, room: 'B-205', condition: 'Stable', lastUpdate: '2 min ago' },
-    { id: 'P1003', name: 'Manish R.', age: 55, room: 'C-310', condition: 'Serious', lastUpdate: '25 min ago' },
-    { id: 'P1004', name: 'Sarah L.', age: 22, room: 'A-105', condition: 'Fair', lastUpdate: '1 hour ago' },
-    { id: 'P1005', name: 'Rahul M.', age: 71, room: 'D-401', condition: 'Stable', lastUpdate: '45 min ago' },
-];
-
-const INITIAL_STAFF = [
-    { id: 'S201', name: 'Dr. Priya Mehta', role: 'Cardiologist', shift: 'Day', contact: 'x201' },
-    { id: 'S202', name: 'Dr. Amit Singh', role: 'Emergency Physician', shift: 'Night', contact: 'x202' },
-    { id: 'S305', name: 'Nurse Rina Das', role: 'Charge Nurse', shift: 'Day', contact: 'x305' },
-    { id: 'S311', name: 'Nurse Kevin J.', role: 'Floor Nurse', shift: 'Day', contact: 'x311' },
-    { id: 'S312', name: 'Nurse Jane Doe', role: 'ICU Nurse', shift: 'Night', contact: 'x312' },
-    { id: 'S501', name: 'Admin Ali Khan', role: 'Admissions', shift: 'Day', contact: 'x501' },
-];
-
-
-function getPatients() {
-    const patientsJSON = localStorage.getItem('hospital_patients');
-    if (patientsJSON) {
-        return JSON.parse(patientsJSON);
-    } else {
-        localStorage.setItem('hospital_patients', JSON.stringify(INITIAL_PATIENTS));
-        return INITIAL_PATIENTS;
-    }
-}
-
-function savePatients(patients) {
-    localStorage.setItem('hospital_patients', JSON.stringify(patients));
-}
-
-function getStaff() {
-    const staffJSON = localStorage.getItem('hospital_staff');
-    if (staffJSON) {
-        return JSON.parse(staffJSON);
-    } else {
-        localStorage.setItem('hospital_staff', JSON.stringify(INITIAL_STAFF));
-        return INITIAL_STAFF;
-    }
-}
-
-// --- 2. Request/Alerts Functions (Dashboard Core) ---
+// --- 1. Data/API Fetch Functions ---
 
 async function fetchDoctorRequests() {
     try {
@@ -118,7 +74,52 @@ async function fetchDoctorRequests() {
     }
 }
 
-function updateDashboardSummary(requests) {
+// Function to fetch patients from the database
+async function fetchPatients() {
+    try {
+        const response = await fetch(`${API_URL}/patients`, { headers: getAuthHeaders() });
+        
+        if (response.status === 401 || response.status === 403) {
+            if (authToken) {
+                redirectToLogin("Access denied or session expired.");
+            }
+            return [];
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching patient list:', error);
+        return []; 
+    }
+}
+
+// Function to fetch staff from the database 
+async function fetchStaff() {
+    try {
+        const response = await fetch(`${API_URL}/staff`, { headers: getAuthHeaders() });
+        
+        if (response.status === 401 || response.status === 403) {
+            if (authToken) {
+                redirectToLogin("Access denied or session expired.");
+            }
+            return [];
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching staff list:', error);
+        return []; 
+    }
+}
+
+
+async function updateDashboardSummary(requests) {
     const sosRequests = requests.filter(r => r.type && r.type.toUpperCase() === 'SOS');
     const bookNowRequests = requests.filter(r => 
         !r.type || 
@@ -126,17 +127,17 @@ function updateDashboardSummary(requests) {
         r.type.toUpperCase() === 'DOCTOR_CONNECT'
     );
     
-    const allPatients = getPatients();
+    // FETCH PATIENT DATA DYNAMICALLY from API
+    const allPatients = await fetchPatients();
+    
     const totalPatientsServed = allPatients.length; 
-    const criticalPatients = allPatients.filter(p => p.condition === 'Critical').length;
-    const stablePatients = allPatients.filter(p => p.condition === 'Stable' || p.condition === 'Fair').length;
+    const criticalPatients = allPatients.filter(p => p.initialCondition.toLowerCase() === 'critical' || p.initialCondition.toLowerCase() === 'serious').length;
+    const stablePatients = allPatients.filter(p => p.initialCondition.toLowerCase() === 'stable' || p.initialCondition.toLowerCase() === 'fair').length;
 
     document.getElementById('report-total-patients').textContent = totalPatientsServed;
     document.getElementById('report-critical-patients').textContent = sosRequests.length + criticalPatients; 
     document.getElementById('report-stable-patients').textContent = stablePatients;
     document.getElementById('report-doctor-requests').textContent = bookNowRequests.length; 
-
-    document.getElementById('queue-count-badge').textContent = bookNowRequests.length;
 }
 
 function renderSOSAlerts(requests) {
@@ -235,6 +236,7 @@ async function resolveRequest(requestId) {
      }
 
     try {
+        // NOTE: This endpoint is simulated and should be implemented in server.js
         const response = await fetch(`${API_URL}/doctor-request/${requestId}/resolve`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -265,14 +267,17 @@ async function resolveRequest(requestId) {
 async function loadAndRenderRequests() {
     const requests = await fetchDoctorRequests();
     
-    updateDashboardSummary(requests); 
+    await updateDashboardSummary(requests); 
     renderSOSAlerts(requests);
     renderBookNowQueue(requests);
 }
 
-// --- 3. Patient and Staff View Functions (Dynamic Content) ---
+// --- 3. Patient and Staff View Functions ---
 
-function renderPatientList(patients = getPatients()) {
+// Renders the patient list from the API
+async function renderPatientList() {
+    const patients = await fetchPatients();
+    
     const tableBody = document.querySelector('#patient-details-table-body');
     if (!tableBody) return;
     
@@ -285,15 +290,24 @@ function renderPatientList(patients = getPatients()) {
 
     patients.forEach(patient => {
         const row = tableBody.insertRow();
-        const conditionClass = `status-badge ${patient.condition.toLowerCase()}-priority`;
+        
+        // Map backend field names to frontend display
+        const patientID = patient.id || patient._id; 
+        const patientName = patient.name;
+        const patientAge = patient.age;
+        const patientRoom = patient.ward; 
+        const patientCondition = patient.initialCondition;
+        const patientAdmittedAt = new Date(patient.admittedAt).toLocaleDateString();
+        
+        const conditionClass = `status-badge ${patientCondition.toLowerCase()}-priority`;
 
         row.innerHTML = `
-            <td>${patient.id}</td>
-            <td>${patient.name}</td>
-            <td>${patient.age}</td>
-            <td>${patient.room}</td>
-            <td><span class="${conditionClass}">${patient.condition}</span></td>
-            <td>${patient.lastUpdate}</td>
+            <td>${patientID}</td>
+            <td>${patientName}</td>
+            <td>${patientAge}</td>
+            <td>${patientRoom}</td>
+            <td><span class="${conditionClass}">${patientCondition}</span></td>
+            <td>${patientAdmittedAt}</td>
             <td>
                 <button class="action-btn detail">View Profile</button>
             </td>
@@ -303,70 +317,189 @@ function renderPatientList(patients = getPatients()) {
     showView('patient-details-view');
 }
 
-function admitPatient(event) {
+// Sends patient admission data to the API
+async function admitPatient(event) {
     event.preventDefault();
-    const id = document.getElementById('new-patient-id').value;
+    
     const name = document.getElementById('new-patient-name').value;
     const age = parseInt(document.getElementById('new-patient-age').value);
-    const room = document.getElementById('new-patient-ward').value;
-    const condition = document.getElementById('new-patient-condition').value;
+    const ward = document.getElementById('new-patient-ward').value; 
+    const initialCondition = document.getElementById('new-patient-condition').value;
 
-    const newPatient = {
-        id: id, 
+    const patientData = {
+        id: document.getElementById('new-patient-id').value,
         name: name, 
         age: age, 
-        room: room, 
-        condition: condition, 
-        lastUpdate: 'Just Admitted'
+        ward: ward, 
+        initialCondition: initialCondition, 
     };
     
-    const patients = getPatients();
-    if (patients.some(p => p.id === id)) {
-        alert("Patient ID already exists.");
-        return;
+    try {
+        const response = await fetch(`${API_URL}/admit-patient`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(patientData)
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        alert(`Patient ${name} admitted successfully.`);
+        document.getElementById('patient-admission-form').reset();
+        
+        showDashboard(); 
+    } catch (error) {
+        console.error('Admission Error:', error);
+        alert('Failed to admit patient. Please check the server and console.');
     }
-    
-    patients.push(newPatient);
-    savePatients(patients);
-    
-    alert(`Patient ${name} admitted successfully.`);
-    document.getElementById('patient-admission-form').reset();
-    showDashboard(); 
 }
 
-// CRITICAL: Dynamic Staff List generation logic
-function showStaffingReport() {
-    const staff = getStaff();
+// Function to add new staff member 
+async function addStaff(event) {
+    event.preventDefault();
     
-    const doctors = staff.filter(s => s.role.includes('Doctor') || s.role.includes('Physician') || s.role.includes('Surgeon'));
-    const nurses = staff.filter(s => s.role.includes('Nurse'));
-    const admin = staff.filter(s => s.role.includes('Admin') || s.role.includes('Admissions'));
+    const staffData = {
+        id: document.getElementById('new-staff-id').value,
+        name: document.getElementById('new-staff-name').value,
+        role: document.getElementById('new-staff-role').value,
+        shift: document.getElementById('new-staff-shift').value,
+        contact: document.getElementById('new-staff-contact').value
+    };
+    
+    try {
+        const response = await fetch(`${API_URL}/staff`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(staffData)
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        alert(`Staff member ${staffData.name} added successfully.`);
+        document.getElementById('staff-admission-form').reset();
+        
+        // Return to the updated staffing report view
+        showStaffingReport(); 
+    } catch (error) {
+        console.error('Add Staff Error:', error);
+        alert('Failed to add staff member. Check the server and console.');
+    }
+}
+
+// Function to delete a staff member (NEW)
+async function deleteStaff(staffMongoId, staffName) {
+    if (!confirm(`Are you sure you want to remove staff member ${staffName}? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        // Use DELETE method and pass the MongoDB _id in the URL parameter
+        const response = await fetch(`${API_URL}/staff/${staffMongoId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (response.status === 404) {
+             alert('Staff member not found or they do not belong to this hospital.');
+             showStaffingReport();
+             return;
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        alert(`Staff member ${staffName} successfully removed.`);
+        
+        // Refresh the staffing report view to update the table
+        showStaffingReport(); 
+    } catch (error) {
+        console.error('Delete Staff Error:', error);
+        alert('Failed to remove staff member. Check the server and console.');
+    }
+}
+
+
+// Renders the staff list from the API
+async function showStaffingReport() {
+    const staff = await fetchStaff(); // <-- Fetch from API
+    
+    const doctors = staff.filter(s => s.role.toLowerCase().includes('doctor') || s.role.toLowerCase().includes('physician') || s.role.toLowerCase().includes('surgeon'));
+    const nurses = staff.filter(s => s.role.toLowerCase().includes('nurse'));
+    const admin = staff.filter(s => s.role.toLowerCase().includes('admin') || s.role.toLowerCase().includes('admissions'));
 
     // Update summary counts
     document.getElementById('staff-doctors-count').textContent = doctors.length;
     document.getElementById('staff-nurses-count').textContent = nurses.length;
     document.getElementById('staff-admins-count').textContent = admin.length;
 
+
     // Render Detailed Staff List table
     const tableBody = document.getElementById('staffing-table-body');
     tableBody.innerHTML = '';
     
-    staff.forEach(s => {
-        const row = tableBody.insertRow();
-        const statusClass = s.shift === 'Day' ? 'status-badge low-priority' : 'status-badge medium-priority';
-        const shiftStatus = s.shift === 'Day' ? 'On Duty (Day)' : 'On Duty (Night)';
-        
-        row.innerHTML = `
-            <td>${s.id}</td>
-            <td>${s.name}</td>
-            <td>${s.role}</td>
-            <td><span class="${statusClass}">${shiftStatus}</span></td>
-            <td>${s.contact}</td>
-        `;
-    });
+    if (staff.length === 0) {
+        // Updated colspan to 6 to account for the new 'Actions' column
+        tableBody.innerHTML = `<tr><td colspan="6" class="no-data-row">No staff records found for this hospital.</td></tr>`;
+    } else {
+        staff.forEach(s => {
+            const row = tableBody.insertRow();
+            
+            // Logic to determine status class based on shift
+            let statusText = s.shift;
+            let statusClass = 'status-badge default-badge'; 
+            if (s.shift.toLowerCase() === 'day') {
+                statusText = 'On Duty (Day)';
+                statusClass = 'status-badge low-priority';
+            } else if (s.shift.toLowerCase() === 'night') {
+                statusText = 'On Duty (Night)';
+                statusClass = 'status-badge medium-priority';
+            } else if (s.shift.toLowerCase() === 'on-call') {
+                statusText = 'On Call';
+                statusClass = 'status-badge default-badge';
+            }
+            
+            row.innerHTML = `
+                <td>${s.staffId}</td>
+                <td>${s.name}</td>
+                <td>${s.role}</td>
+                <td><span class="${statusClass}">${statusText}</span></td>
+                <td>${s.contact}</td>
+                <td>
+                    <button class="action-btn delete-btn" 
+                        onclick="deleteStaff('${s._id}', '${s.name}')">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </td> `;
+        });
+    }
 
     showView('staffing-report-view');
 }
+
 
 /**
  * Logs the oxygen cylinder request to the console.
@@ -397,17 +530,20 @@ function requestCylinders() {
 // --- 4. View Management Functions ---
 
 function showView(viewId) {
+    // All possible views must be hidden first
     document.getElementById('main-dashboard-view').style.display = 'none'; 
     document.getElementById('patient-details-view').style.display = 'none';
     document.getElementById('patient-admission-view').style.display = 'none';
     document.getElementById('staffing-report-view').style.display = 'none';
-    
+    document.getElementById('staff-admission-view').style.display = 'none'; // <-- New Staff View
+
     const requestedView = document.getElementById(viewId);
     if (requestedView) {
-        if (viewId === 'patient-details-view' || viewId === 'patient-admission-view' || viewId === 'staffing-report-view') {
-            document.getElementById('main-dashboard-view').style.display = 'none';
+        // Handle all non-dashboard views
+        if (viewId !== 'main-dashboard-view') {
             requestedView.style.display = 'block';
-        } else if (viewId === 'main-dashboard-view') {
+        } else {
+            // Handle main dashboard view
             requestedView.style.display = 'flex'; 
         }
     }
@@ -423,13 +559,12 @@ function showDashboard() {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // Initial load and auto-refresh setup
     showDashboard(); 
-
     setInterval(loadAndRenderRequests, REFRESH_INTERVAL); 
 
     // --- Event Listeners (Linking HTML to JS) ---
     
-    // Fix: Ensure clicking the logo returns to the dashboard
     const dashboardLink = document.querySelector('.logo h1'); 
     if (dashboardLink) {
         dashboardLink.style.cursor = 'pointer';
@@ -449,6 +584,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('patient-admission-form').addEventListener('submit', admitPatient);
 
+    // STAFF LOGIC LISTENERS
+    document.getElementById('staff-admission-form').addEventListener('submit', addStaff);
+    
+    const addStaffBtn = document.getElementById('add-staff-btn');
+    if (addStaffBtn) {
+        addStaffBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showView('staff-admission-view');
+        });
+    }
+
+    // Back button from staff admission to staff report
+    const backToStaffReportBtn = document.getElementById('back-to-staff-report-btn');
+    if (backToStaffReportBtn) {
+        backToStaffReportBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showStaffingReport();
+        });
+    }
+
     // Navbar Links
     document.getElementById('staffing-link').addEventListener('click', (event) => {
         event.preventDefault();
@@ -461,10 +616,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Back Buttons (Navigation Fix)
-    document.getElementById('back-to-dashboard-btn').addEventListener('click', (event) => {
-        event.preventDefault();
-        showDashboard();
-    });
+    // NOTE: The IDs used here must match the buttons in hospital.html
+    // If you used back-to-dashboard-from-admission-btn, it is also a back button
+    // which should ideally call showDashboard() which loads requests again.
     document.getElementById('back-to-dashboard-from-patient-btn').addEventListener('click', (event) => {
         event.preventDefault();
         showDashboard();
@@ -472,5 +626,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('back-to-dashboard-from-admission-btn').addEventListener('click', (event) => {
         event.preventDefault();
         showDashboard();
+    });
+    
+    // Logout Button
+    document.getElementById('logout-hospital-btn').addEventListener('click', (event) => {
+        event.preventDefault();
+        redirectToLogin("You have been logged out.");
     });
 });
