@@ -1,4 +1,4 @@
-// server.js (Complete Backend Code with Location-Based Routing)
+// server.js (Complete Backend Code with Location-Based Routing, Prescriptions, and Resolution)
 
 require('dotenv').config();
 const express = require('express');
@@ -233,6 +233,7 @@ app.post('/api/login', async (req, res) => {
     try {
         // when role === 'hospital', username can be email or hospitalId depending on your choice.
         let query = { username, role };
+
         // Fall back: allow hospital login by hospitalId as well
         if (role === 'hospital') {
             query = { $or: [{ username }, { email: username }, { hospitalId: username }], role };
@@ -249,19 +250,32 @@ app.post('/api/login', async (req, res) => {
         }
 
         if (role === 'hospital' && user.status !== 'APPROVED') {
-            return res.status(403).json({ message: 'Hospital not approved yet.' });
+            return res.status(403).json({ message: 'Hospital registration pending admin approval.' });
         }
 
-        // 1. Update user location upon successful login
-        // NOTE: This logic prevents location update if 'location' is not in the request body (as modified in login.html for hospitals)
-        const updateDoc = {};
-        if (location && (role === 'patient' || role === 'hospital')) {
-            updateDoc.location = location;
-            await usersCollection.updateOne({ _id: user._id }, { $set: updateDoc });
+        // If patient provides new location during login, update it
+        if (role === 'patient' && location) {
+            await usersCollection.updateOne(
+                { _id: user._id },
+                { $set: { location: location } }
+            );
         }
 
-        const token = jwt.sign({ username: user.username, role: user.role, id: user._id.toString() }, JWT_SECRET, { expiresIn: '1h' });
-        res.status(200).json({ message: 'Login successful.', token, username: user.username, role: user.role });
+        const token = jwt.sign({ username: user.username, role: user.role, id: user._id.toString() }, JWT_SECRET, { expiresIn: '12h' });
+
+        // Add hospitalId to response if available
+        const responsePayload = {
+            message: 'Login successful.',
+            username: user.username,
+            role: user.role,
+            token,
+            id: user._id.toString()
+        };
+        if (user.hospitalId) {
+            responsePayload.hospitalId = user.hospitalId;
+        }
+
+        res.json(responsePayload);
 
     } catch (e) {
         console.error("Login Error:", e);
@@ -269,8 +283,9 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+
 // ------------------------------------
-// --- ADMIN: Pending Hospitals & Approve
+// --- ADMIN ROUTES (Hospital Approval)
 // ------------------------------------
 
 // GET /api/hospitals/pending
@@ -302,6 +317,7 @@ app.put('/api/hospital/approve/:id', authenticateToken, async (req, res) => {
 
     try {
         const hospital = await usersCollection.findOne({ _id: new ObjectId(hospitalIdParam) });
+
         if (!hospital) return res.status(404).json({ message: 'Hospital not found.' });
 
         const newHospitalId = generateHospitalId();
@@ -315,6 +331,7 @@ app.put('/api/hospital/approve/:id', authenticateToken, async (req, res) => {
         sendHospitalApprovalEmail(hospital.email, newHospitalId);
 
         res.json({ message: 'Hospital approved successfully.', hospitalId: newHospitalId });
+
     } catch (e) {
         console.error('Approval Error:', e);
         res.status(500).json({ message: 'Error approving hospital.' });
@@ -331,49 +348,51 @@ app.post('/api/goals', authenticateToken, async (req, res) => {
 
     try {
         const { goals } = req.body;
-        const patientName = req.user.username;
+        const patientName = req.user.username; // Use username from JWT for security
 
-        await db.collection('patientGoals').updateOne(
-            { patientName },
-            { $set: { patientName, goals, lastUpdated: new Date() } },
+        await db.collection('goals').updateOne(
+            { patientName: patientName },
+            { $set: { goals, updatedAt: new Date() } },
             { upsert: true }
         );
 
-        res.status(200).json({ message: 'Goals updated successfully.' });
+        res.json({ message: 'Goals updated successfully.' });
     } catch (e) {
-        console.error("Goal Update Error:", e);
-        res.status(500).json({ message: 'Error saving goals.' });
+        console.error('Goal Update Error:', e);
+        res.status(500).json({ message: 'Error updating goals.' });
     }
 });
 
-// GET /api/goals/:name (Fetch Patient Goals)
-app.get('/api/goals/:name', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'patient' || req.user.username !== req.params.name) {
-        return res.status(403).json({ message: 'Access denied.' });
-    }
-    try {
-        const patientName = req.params.name;
-        const result = await db.collection('patientGoals').findOne({ patientName });
+// GET /api/goals/:patientName (Fetch Patient Goals)
+app.get('/api/goals/:patientName', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'patient') return res.status(403).json({ message: 'Access denied.' });
 
-        if (!result) {
-            return res.status(404).json({ message: 'Goals not found for this patient.' });
+    const patientNameParam = req.params.patientName;
+    if (patientNameParam !== req.user.username) {
+        return res.status(403).json({ message: 'Access denied to other patient\'s data.' });
+    }
+
+    try {
+        const goalsRecord = await db.collection('goals').findOne({ patientName: patientNameParam });
+
+        if (!goalsRecord) {
+            return res.status(404).json({ message: 'No goals found for this patient.' });
         }
-        // Return only the goals object
-        res.json(result.goals);
+
+        res.json(goalsRecord.goals);
     } catch (e) {
-        console.error("Goal Fetch Error:", e);
+        console.error('Fetch Goals Error:', e);
         res.status(500).json({ message: 'Error fetching goals.' });
     }
 });
 
-// ------------------------------------
-// --- EMERGENCY/REQUEST ROUTES (SOS and Doctor Request)
-// ------------------------------------
+// POST /api/sos (Emergency SOS Request)
+app.post('/api/sos', async (req, res) => {
+    const { patientName, reason, location } = req.body; // location: {lat, lng}
 
-// POST /api/sos-request (High-Priority Emergency Routing)
-app.post('/api/sos-request', async (req, res) => {
-    // This endpoint is generally public for fast access, but req.user can be checked if token is present
-    const { patientName, reason, criticality, location } = req.body;
+    if (!location || !location.lat || !location.lng) {
+        return res.status(400).json({ message: "Location is required for SOS dispatch." });
+    }
 
     try {
         const nearest = await findNearestHospital(location.lat, location.lng);
@@ -413,6 +432,10 @@ app.post('/api/doctor-request', async (req, res) => {
     // This endpoint is generally public for fast access
     const { patientName, reason, criticality, location } = req.body;
 
+    if (!location || !location.lat || !location.lng) {
+        return res.status(400).json({ message: "Location is required for doctor connection." });
+    }
+
     try {
         const nearest = await findNearestHospital(location.lat, location.lng);
 
@@ -439,105 +462,69 @@ app.post('/api/doctor-request', async (req, res) => {
             hospitalName: nearest.hospital.username || nearest.hospital.name,
             distance: nearest.distance,
         });
-
     } catch (e) {
         console.error('Error handling doctor request:', e);
-        res.status(500).json({ message: 'Internal server error during request dispatch.' });
+        res.status(500).json({ message: 'Internal server error during doctor request.' });
     }
 });
+
+// GET /api/prescriptions/:patientName (Fetch Patient Prescriptions) (NEW)
+app.get('/api/prescriptions/:patientName', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'patient') return res.status(403).json({ message: 'Access denied.' });
+
+    const patientNameParam = req.params.patientName;
+
+    // Security check: Ensure the name in the URL matches the logged-in user's name
+    if (patientNameParam !== req.user.username) {
+        return res.status(403).json({ message: 'Access denied to other patient\'s data.' });
+    }
+
+    try {
+        const prescriptions = await db.collection('prescriptions')
+            .find({ patientName: patientNameParam })
+            .sort({ prescribedAt: -1 })
+            .toArray();
+
+        res.json(prescriptions);
+    } catch (e) {
+        console.error('Fetch Prescriptions Error:', e);
+        res.status(500).json({ message: 'Error fetching prescriptions.' });
+    }
+});
+
 
 // ------------------------------------
 // --- HOSPITAL ROUTES (Needs Auth)
 // ------------------------------------
 
-// POST /api/admit-patient (Hospital Admission Form Button)
+// POST /api/admit-patient
 app.post('/api/admit-patient', authenticateToken, async (req, res) => {
     if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+    
+    // Expected body: { id, name, age, ward, initialCondition }
+    const patientData = req.body;
 
+    // Basic validation
+    if (!patientData.id || !patientData.name || !patientData.age) {
+        return res.status(400).json({ message: 'Missing required patient fields.' });
+    }
+    
     try {
-        const patientData = req.body;
-
-        const newPatientRecord = {
+        const admittedPatient = {
             ...patientData,
             hospitalId: req.user.id,
             admittedAt: new Date(),
-            lastUpdate: 'Just Now'
         };
 
-        await db.collection('admittedPatients').insertOne(newPatientRecord);
-
-        res.status(201).json({ message: 'Patient admitted successfully.', patient: newPatientRecord });
+        await db.collection('admittedPatients').insertOne(admittedPatient);
+        res.status(201).json({ message: 'Patient admitted successfully.' });
+        
     } catch (e) {
         console.error('Admission Error:', e);
         res.status(500).json({ message: 'Error admitting patient.' });
     }
 });
 
-app.post('/api/staff', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
-    try {
-        const { id, name, role, shift, contact } = req.body;
-
-        const newStaffRecord = {
-            hospitalId: req.user.id, // CRUCIAL: Links staff member to the hospital
-            staffId: id,
-            name,
-            role,
-            shift,
-            contact,
-            hiredAt: new Date()
-        };
-
-        await db.collection('hospitalStaff').insertOne(newStaffRecord);
-
-        res.status(201).json({ message: 'Staff member added successfully.', staff: newStaffRecord });
-    } catch (e) {
-        console.error('Add Staff Error:', e);
-        res.status(500).json({ message: 'Error adding staff member.' });
-    }
-});
-
-app.get('/api/staff', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
-    try {
-        // Fetch only staff assigned to this hospital
-        const staff = await db.collection('hospitalStaff')
-            .find({ hospitalId: req.user.id }) // CRUCIAL: Only retrieve staff for this hospital
-            .sort({ role: 1, name: 1 })
-            .toArray();
-
-        res.json(staff);
-    } catch (e) {
-        console.error('Fetch Staff Error:', e);
-        res.status(500).json({ message: 'Error fetching staff list.' });
-    }
-});
-app.delete('/api/staff/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
-
-    const staffIdToDelete = req.params.id;
-
-    try {
-        // Ensure you have imported ObjectId from 'mongodb' at the top of server.js
-        const result = await db.collection('hospitalStaff').deleteOne({
-            _id: new ObjectId(staffIdToDelete), // Use the MongoDB document ID
-            hospitalId: req.user.id          // CRUCIAL: Security filter - must belong to the logged-in hospital
-        });
-
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ message: 'Staff member not found or does not belong to this hospital.' });
-        }
-
-        res.json({ message: 'Staff member removed successfully.' });
-    } catch (e) {
-        console.error('Delete Staff Error:', e);
-        // This handles cases where the ID provided is not a valid MongoDB format
-        if (e.name === 'BSONTypeError') {
-            return res.status(400).json({ message: 'Invalid Staff ID format.' });
-        }
-        res.status(500).json({ message: 'Error deleting staff member.' });
-    }
-});
 
 // GET /api/patients (View Patient Details Button)
 app.get('/api/patients', authenticateToken, async (req, res) => {
@@ -570,15 +557,152 @@ app.get('/api/doctor-requests', authenticateToken, async (req, res) => {
         res.json(requests);
     } catch (e) {
         console.error('Fetch Requests Error:', e);
-        res.status(500).json({ message: 'Error fetching requests.' });
+        res.status(500).json({ message: 'Error fetching doctor requests.' });
+    }
+});
+
+// PUT /api/doctor-request/:id/resolve (Resolve Doctor Request) (NEW)
+app.put('/api/doctor-request/:id/resolve', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const requestId = req.params.id;
+    
+    // --- FIX 2: Validate ObjectID before creating it to prevent server crash (the source of the 'Failed' alert) ---
+    if (!ObjectId.isValid(requestId)) {
+        console.warn('Attempted resolution with invalid Request ID:', requestId);
+        return res.status(400).json({ message: 'Invalid format for request ID.' });
+    }
+    // --- END FIX 2 ---
+
+    try {
+        // Delete the request from the queue
+        const result = await db.collection('doctorRequests').deleteOne({
+            _id: new ObjectId(requestId), // Now safe because it was checked
+            hospitalId: req.user.id // Security check
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Request not found or already resolved.' });
+        }
+
+        res.json({ message: 'Request resolved and deleted successfully.' });
+    } catch (e) {
+        console.error('Resolve Request Error:', e);
+        res.status(500).json({ message: 'Error resolving request.' });
+    }
+});
+
+// POST /api/prescriptions (Save new prescription) (NEW)
+app.post('/api/prescriptions', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const { requestId, patientName, prescription } = req.body;
+
+    if (!requestId || !patientName || !prescription) {
+        return res.status(400).json({ message: 'Missing required prescription fields.' });
+    }
+
+    try {
+        // --- FIX 1: Fetch the Hospital's registered Name ---
+        // The hospital's actual name is stored in the 'name' field, not always 'username'.
+        const hospitalUser = await db.collection('users').findOne(
+            { _id: new ObjectId(req.user.id), role: 'hospital' },
+            { projection: { name: 1 } } // Only fetch the 'name' field
+        );
+        
+        // Use the fetched 'name' or a fallback
+        const actualHospitalName = hospitalUser && hospitalUser.name ? hospitalUser.name : 'Unknown Hospital';
+        // --- END FIX 1 ---
+
+        const newPrescription = {
+            requestId: requestId,
+            patientName: patientName,
+            hospitalId: req.user.id,
+            hospitalName: actualHospitalName, // Use the correct fetched name (Fixes Hospital N/A)
+            doctor: 'Hospital Staff', // Use a default name, as client only provides prescription text (Fixes Doctor N/A)
+            prescription: prescription,
+            prescribedAt: new Date()
+        };
+
+        await db.collection('prescriptions').insertOne(newPrescription);
+        res.status(201).json({ message: 'Prescription saved successfully.' });
+    } catch (e) {
+        console.error('Save Prescription Error:', e);
+        res.status(500).json({ message: 'Error saving prescription.' });
+    }
+});
+// POST /api/staff (Add New Staff)
+app.post('/api/staff', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+    
+    const staffData = req.body;
+
+    if (!staffData.id || !staffData.name || !staffData.role) {
+        return res.status(400).json({ message: 'Missing required staff fields.' });
+    }
+
+    try {
+        const newStaff = {
+            ...staffData,
+            hospitalId: req.user.id,
+            addedAt: new Date(),
+        };
+
+        await db.collection('hospitalStaff').insertOne(newStaff);
+        res.status(201).json({ message: 'Staff member added successfully.' });
+    } catch (e) {
+        console.error('Add Staff Error:', e);
+        res.status(500).json({ message: 'Error adding staff member.' });
+    }
+});
+
+// GET /api/staff (Fetch Staff List)
+app.get('/api/staff', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    try {
+        // Fetch only staff assigned to this hospital
+        const staff = await db.collection('hospitalStaff')
+            .find({ hospitalId: req.user.id }) // CRUCIAL: Only retrieve staff for this hospital
+            .sort({ role: 1, name: 1 })
+            .toArray();
+
+        res.json(staff);
+    } catch (e) {
+        console.error('Fetch Staff Error:', e);
+        res.status(500).json({ message: 'Error fetching staff list.' });
+    }
+});
+
+// DELETE /api/staff/:id (Delete Staff Member)
+app.delete('/api/staff/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const staffId = req.params.id;
+    
+    try {
+        const result = await db.collection('hospitalStaff').deleteOne({
+            _id: new ObjectId(staffId),
+            hospitalId: req.user.id // Security check: Ensure hospital can only delete its own staff
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Staff member not found or already removed.' });
+        }
+
+        res.json({ message: 'Staff member removed successfully.' });
+    } catch (e) {
+        console.error('Delete Staff Error:', e);
+        res.status(500).json({ message: 'Error removing staff member.' });
     }
 });
 
 
+// ------------------------------------
+// --- SERVER STARTUP
+// ------------------------------------
 
-// --- Server Start ---
-connectToMongo().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-    });
+app.listen(PORT, async () => {
+    await connectToMongo();
+    console.log(`Server is running on port ${PORT}`);
 });

@@ -1,4 +1,4 @@
-// patient.js (COMPLETE LOGIC)
+// patient.js (COMPLETE LOGIC with Prescription View)
 
 // --- Global Configuration ---
 const API_URL = 'http://localhost:3000/api';
@@ -31,7 +31,7 @@ const doctorRequestForm = document.getElementById('doctor-request-form');
 const confirmSosBtn = document.getElementById('confirm-sos-btn');
 const cancelSosBtn = document.getElementById('cancel-sos-btn');
 
-// --- API & DATA FUNCTIONS (UNCHANGED) ---
+// --- API & DATA FUNCTIONS ---
 
 function getAuthHeaders() {
     return {
@@ -98,6 +98,66 @@ async function updateGoalsAPI(goals) {
 }
 
 
+// --- PRESCRIPTION VIEW LOGIC (NEW) ---
+
+async function fetchPrescriptions() {
+    try {
+        const response = await fetch(`${API_URL}/prescriptions/${encodeURIComponent(patientName)}`, { headers: getAuthHeaders() });
+
+        if (response.status === 401 || response.status === 403) {
+            redirectToLogin("Session expired. Please log in again.");
+            return [];
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching prescriptions:', error);
+        return [];
+    }
+}
+
+async function renderPrescriptions() {
+    const prescriptions = await fetchPrescriptions();
+    const listContainer = document.getElementById('prescriptions-list-container');
+    listContainer.innerHTML = ''; // Clear previous content
+
+    if (prescriptions.length === 0) {
+        listContainer.innerHTML = '<p class="empty-list-message">No prescriptions found yet.</p>';
+        return;
+    }
+
+    prescriptions.forEach(p => {
+        const date = new Date(p.prescribedAt).toLocaleDateString();
+        const time = new Date(p.prescribedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const item = document.createElement('div');
+        item.className = 'card glass-panel prescription-item'; // Use existing card/glass styles
+        item.innerHTML = `
+            <div class="header">
+                <i class="fas fa-pills"></i>
+                <div class="details">
+                    <h4>Prescribed by Dr. ${p.doctor || 'N/A'}</h4>
+                    <span class="date">${date} at ${time}</span>
+                </div>
+            </div>
+            <hr style="margin: 10px 0; border: none; border-top: 1px dashed #e5e7eb;">
+            <p class="prescription-text">${p.prescription.replace(/\n/g, '<br>')}</p>
+            <div class="footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+                <span>Hospital: ${p.hospitalName || 'N/A'}</span>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    });
+
+    // Switch view
+    showView('prescriptions-view');
+}
+
+
 // --- PROGRESS CALCULATION & RENDERING (UNCHANGED) ---
 
 function calculateProgress(current, target) {
@@ -135,13 +195,49 @@ async function renderProgress() {
     document.getElementById('sleep-current').textContent = goals.sleep;
     document.getElementById('sleep-target').textContent = GOAL_TARGETS.sleep;
 
-    document.getElementById('steps-input').value = goals.steps;
-    document.getElementById('water-input').value = goals.water;
-    document.getElementById('sleep-input').value = goals.sleep;
+    // Use current values only for progress display, not for input fields on load
+    // document.getElementById('steps-input').value = goals.steps;
+    // document.getElementById('water-input').value = goals.water;
+    // document.getElementById('sleep-input').value = goals.sleep;
 }
 
 
-// --- BUTTON HANDLERS (UNCHANGED) ---
+// --- BUTTON & VIEW HANDLERS ---
+
+// NEW: Function to manage view switching
+function showView(viewId) {
+    // Hide all main content views
+    document.querySelector('.dashboard-container').style.display = 'none';
+    const prescriptionsView = document.getElementById('prescriptions-view');
+    if (prescriptionsView) prescriptionsView.style.display = 'none';
+    
+    // Deactivate all nav links
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // Show the requested view
+    const requestedView = document.getElementById(viewId);
+    if (requestedView) {
+        requestedView.style.display = 'block';
+        // Activate the corresponding nav link
+        document.getElementById(`${viewId.replace('-view', '')}-link`).classList.add('active');
+    }
+
+    // Special case for dashboard-container, which has no ID in patient.html, so we check for 'dashboard'
+    if (viewId === 'dashboard') {
+        document.querySelector('.dashboard-container').style.display = 'flex';
+        document.getElementById('dashboard-link').classList.add('active');
+    }
+}
+
+// Function to handle the initial load and navigation to the Dashboard
+function showDashboard() {
+    showView('dashboard');
+    // Reload progress data for the dashboard
+    renderProgress(); 
+}
+
 
 async function handleGoalUpdate(event) {
     event.preventDefault();
@@ -187,277 +283,276 @@ function handleBmiCalculation() {
         color = '#fdcb6e';
     } else {
         category = 'Obesity';
-        color = '#d63031';
+        color = '#ef4444';
     }
 
     document.getElementById('bmi-result').innerHTML = `
-        <p>Your BMI is: <strong style="color: ${color};">${bmi.toFixed(2)}</strong></p>
-        <p>Category: <span style="color: ${color}; font-weight: bold;">${category}</span></p>
+        <p>Your BMI is <strong>${bmi.toFixed(2)}</strong></p>
+        <p style="color: ${color};">Category: <strong>${category}</strong></p>
     `;
 }
 
-// 3. Central Request Handler for Doctor Connect and SOS
-async function sendRequest(reason, criticality, type) {
-    const modalToUpdate = (type === 'SOS' ? sosModal : doctorModal);
-    const endpoint = type === 'SOS' ? '/sos-request' : '/doctor-request';
+// 1. Doctor Request Form Submission Handler (MODIFIED: now gets location)
+async function handleDoctorRequestForm(event) {
+    event.preventDefault();
 
-    // Debug Logging
-    console.log(`[sendRequest] Initiating ${type} request...`);
+    const issue = document.getElementById('issue-input').value;
+    const criticality = document.getElementById('criticality-select').value;
 
-    // Helper to proceed with request once location is known
-    const executeFetch = async (lat, lng) => {
-        console.log(`[sendRequest] Location obtained: ${lat}, ${lng}`);
+    // First, try to get the user's location
+    getLocationAndSendRequest(
+        '/doctor-request', // Endpoint
+        {
+            patientName: patientName,
+            reason: issue,
+            criticality: criticality
+        },
+        'DOCTOR_CONNECT', // Request Type
+        doctorModal // Modal to close/update
+    );
 
-        const requestData = {
+    // Close the modal immediately to show the "Request Sent" status if needed (optional)
+    // doctorModal.style.display = 'none';
+}
+
+
+// 2. SOS Confirmation Button Handler (MODIFIED: now gets location)
+function handleConfirmSos() {
+    const reason = document.getElementById('sos-reason-input').value || 'Immediate Emergency';
+
+    // First, try to get the user's location
+    getLocationAndSendRequest(
+        '/sos', // Endpoint
+        {
             patientName: patientName,
             reason: reason,
-            criticality: criticality.toUpperCase(),
-            type: type, // Ensure this matches what hospital.js expects (UPPERCASE usually safe)
-            timestamp: new Date().toISOString(), // Ensure timestamp is sent client-side if server doesn't add it
-            location: {
-                lat: parseFloat(lat),
-                lng: parseFloat(lng)
-            }
-        };
+        },
+        'SOS', // Request Type
+        sosModal // Modal to update
+    );
+}
 
-        console.log(`[sendRequest] Payload:`, requestData);
+// 3. Geolocation Helper (UNCHANGED)
+function getLocationAndSendRequest(endpoint, requestData, type, modalToUpdate) {
+    if ("geolocation" in navigator) {
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const requestStatusStep = document.getElementById('request-status-step');
+        const confirmStep = document.getElementById('sos-confirm-step');
+        
+        // Show status step immediately for feedback
+        if (type === 'SOS') {
+            confirmStep.style.display = 'none';
+            requestStatusStep.style.display = 'block';
+            statusTitle.innerHTML = `<i class="fas fa-spinner fa-spin" style="color: var(--text-muted);"></i> Locating...`;
+            statusMessage.innerHTML = `Attempting to pinpoint your location for emergency dispatch.`;
+        }
 
-        try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
 
-            console.log(`[sendRequest] Response Status: ${response.status}`);
-            const result = await response.json();
-            console.log(`[sendRequest] Response Body:`, result);
+                // Save location to local storage (optional, for later use)
+                localStorage.setItem('patient_latitude', lat);
+                localStorage.setItem('patient_longitude', lng);
 
-            const success = response.ok;
+                // Add location to the request payload
+                requestData.location = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                
+                // Now send the request with location
+                sendRequest(endpoint, requestData, type);
 
-            // POP-UP BOX UPDATE LOGIC
-            const statusTitle = document.getElementById('status-title');
-            const statusMessage = document.getElementById('status-message');
-            const requestStatusStep = document.getElementById('request-status-step');
-            const confirmStep = document.getElementById('sos-confirm-step');
-
-            if (type === 'SOS') {
-                confirmStep.style.display = 'none';
-                requestStatusStep.style.display = 'block';
-
-                if (success) {
-                    statusTitle.innerHTML = `<i class="fas fa-check-circle" style="color: var(--secondary);"></i> SOS Request Sent!`;
-                    statusMessage.innerHTML = `The nearest hospital (**${result.hospitalName || 'Central'}**) has been notified of your **HIGH** priority emergency. Arrival time: ~${result.distance ? result.distance.toFixed(2) : '2.5'} km.`;
-                } else {
-                    statusTitle.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> SOS Failed`;
-                    statusMessage.innerHTML = `Request failed: ${result.message || 'Could not dispatch request.'} Please call emergency services directly.`;
+            },
+            (error) => {
+                let errMsg;
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errMsg = "Permission to access location was denied.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errMsg = "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        errMsg = "The request to get user location timed out.";
+                        break;
+                    default:
+                        errMsg = "An unknown error occurred.";
+                        break;
                 }
-            } else { // DOCTOR_CONNECT
-                doctorModal.style.display = 'none';
-                alert(`Doctor Request Sent! The nearest hospital (${result.hospitalName || 'Central'} - ${result.distance ? result.distance.toFixed(2) : '2.5'} km) has been notified. Check your Prescription tab for updates.`);
-            }
-
-        } catch (error) {
-            console.error(`${type} Request Error:`, error);
-            alert(`A network error occurred: ${error.message}. Could not connect to the Jeevrakshak server.`);
-            modalToUpdate.style.display = 'none';
-        }
-    };
-
-    // Location Check & JIT Fetching
-    let patientLat = localStorage.getItem('patient_latitude');
-    let patientLng = localStorage.getItem('patient_longitude');
-
-    console.log(`[sendRequest] Stored Location: ${patientLat}, ${patientLng}`);
-
-    if (patientLat && patientLng && patientLat !== 'undefined' && patientLng !== 'undefined') {
-        // Location exists, proceed
-        await executeFetch(patientLat, patientLng);
-    } else {
-        // Location missing, attempt JIT fetch
-        // Location missing, attempt JIT fetch SILENTLY first (User Experience Improvement)
-        // console.warn("[sendRequest] Location missing from Storage. Attempting JIT fetch...");
-
-        // Directly attempt fetch without pestering the user
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    console.log(`[sendRequest] JIT Location Success: ${lat}, ${lng}`);
-
-                    // Save for future use in this session
-                    localStorage.setItem('patient_latitude', lat);
-                    localStorage.setItem('patient_longitude', lng);
-
-                    executeFetch(lat, lng);
-                },
-                (error) => {
-                    console.error("JIT Geolocation Error:", error);
-                    let errMsg = "Unknown error";
-                    switch (error.code) {
-                        case error.PERMISSION_DENIED: errMsg = "User denied request"; break;
-                        case error.POSITION_UNAVAILABLE: errMsg = "Location info unavailable"; break;
-                        case error.TIMEOUT: errMsg = "Request timed out"; break;
-                    }
-                    alert(`Could not fetch location: ${errMsg}. Please ensure GPS is on.`);
+                
+                // Show failure state in modal
+                if (type === 'SOS') {
+                    statusTitle.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: var(--danger-red);"></i> Location Failed`;
+                    statusMessage.innerHTML = `Error: ${errMsg}. Please enable GPS and try again, or call emergency services directly.`;
+                } else {
+                    alert(`Location Error: ${errMsg}. Please ensure GPS is on.`);
                     modalToUpdate.style.display = 'none';
-                },
-                { enableHighAccuracy: false, timeout: 15000 } // Relaxed accuracy and increased timeout for better success rate
-            );
-        } else {
-            alert("Geolocation is not supported by your browser or disabled.");
-            modalToUpdate.style.display = 'none';
-        }
+                }
+                
+            },
+            { enableHighAccuracy: false, timeout: 15000 } // Relaxed accuracy and increased timeout for better success rate
+        );
+    } else {
+        alert("Geolocation is not supported by your browser or disabled.");
+        modalToUpdate.style.display = 'none';
     }
 }
 
 
-// 4. Doctor Request/Book Now Button Handler
+// 4. API Request Sender (MODIFIED: to handle Doctor Connect pop-up)
+async function sendRequest(endpoint, requestData, type) {
+    console.log(`[sendRequest] Payload:`, requestData);
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        console.log(`[sendRequest] Response Status: ${response.status}`);
+        const result = await response.json();
+        console.log(`[sendRequest] Response Body:`, result);
+        const success = response.ok;
+
+        // POP-UP BOX UPDATE LOGIC
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const requestStatusStep = document.getElementById('request-status-step');
+        const confirmStep = document.getElementById('sos-confirm-step');
+
+        if (type === 'SOS') {
+            // Already in SOS modal view
+            if (success) {
+                statusTitle.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success-green);"></i> SOS Request Sent!`;
+                statusMessage.innerHTML = `The nearest hospital (**${result.hospitalName || 'Central'}**) has been notified of your **HIGH** priority emergency. Distance: ~${result.distance ? result.distance.toFixed(2) : '2.5'} km.`;
+            } else {
+                statusTitle.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: var(--danger-red);"></i> SOS Failed`;
+                statusMessage.innerHTML = `Request failed: ${result.message || 'Could not dispatch request.'} Please call emergency services directly.`;
+            }
+        } else { // DOCTOR_CONNECT
+            doctorModal.style.display = 'none';
+            // Use SOS modal as a generic status update modal for now
+            confirmStep.style.display = 'none';
+            requestStatusStep.style.display = 'block';
+            sosModal.style.display = 'block';
+
+            if (success) {
+                statusTitle.innerHTML = `<i class="fas fa-user-md" style="color: var(--primary-dark);"></i> Consultation Requested`;
+                statusMessage.innerHTML = `Your **${requestData.criticality}** priority request has been sent to **${result.hospitalName || 'Central'}**. A doctor will connect with you soon.`;
+            } else {
+                statusTitle.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: var(--danger-red);"></i> Request Failed`;
+                statusMessage.innerHTML = `Request failed: ${result.message || 'Could not send request.'}`;
+            }
+        }
+
+
+    } catch (error) {
+        console.error('API Request Error:', error);
+
+        // Fail-safe status update for both types
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const requestStatusStep = document.getElementById('request-status-step');
+        const confirmStep = document.getElementById('sos-confirm-step');
+
+        if (type === 'SOS') {
+            confirmStep.style.display = 'none';
+            requestStatusStep.style.display = 'block';
+            sosModal.style.display = 'block';
+        } else {
+            doctorModal.style.display = 'none';
+            confirmStep.style.display = 'none';
+            requestStatusStep.style.display = 'block';
+            sosModal.style.display = 'block';
+        }
+        
+        statusTitle.innerHTML = `<i class="fas fa-times-circle" style="color: var(--danger-red);"></i> Connection Error`;
+        statusMessage.innerHTML = `Failed to connect to the server. Please check your network and try again.`;
+    }
+}
+
+// 5. Doctor Request/Book Now Button Handler (UNCHANGED)
 function handleDoctorRequest() {
     // Reset form before opening
     doctorRequestForm.reset();
     doctorModal.style.display = 'block';
 }
 
-// 5. SOS Button Handler (MODIFIED FOR MODAL)
+// 6. SOS Button Handler (UNCHANGED)
 function handleSosButton() {
     // Show the confirmation step and hide status step
     document.getElementById('sos-confirm-step').style.display = 'block';
     document.getElementById('request-status-step').style.display = 'none';
     // Remove the 'required' attribute temporarily just in case
-    document.getElementById('sos-reason-input').removeAttribute('required');
     document.getElementById('sos-reason-input').value = '';
     sosModal.style.display = 'block';
 }
 
-// 6. Logout Handler (UNCHANGED)
+// 7. Logout Handler (UNCHANGED)
 function handleLogout() {
     redirectToLogin("You have been logged out.");
 }
 
-
-// --- Modal Event Listeners ---
-
-// Close modals when clicking the X button
-document.querySelectorAll('.close-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-        e.target.closest('.modal').style.display = 'none';
-    });
-});
-
-// Close modals when clicking outside of them
-window.addEventListener('click', (event) => {
-    if (event.target === doctorModal) {
-        doctorModal.style.display = 'none';
-    }
-    if (event.target === sosModal) {
-        sosModal.style.display = 'none';
-    }
-});
-
-
-// Doctor Request Form Submission
-doctorRequestForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const reason = document.getElementById('issue-input').value.trim();
-    const criticality = document.getElementById('criticality-select').value;
-
-    if (reason && criticality) {
-        sendRequest(reason, criticality, 'DOCTOR_CONNECT');
-    } else {
-        alert("Please describe your issue and select a criticality level.");
-    }
-});
-
-// SOS Confirmation Button - *** THIS IS THE MODIFIED PART ***
-confirmSosBtn.addEventListener('click', () => {
-    let reason = document.getElementById('sos-reason-input').value.trim();
-
-    // If the user did not enter a reason, use a default, but DO NOT prevent the request.
-    if (!reason) {
-        reason = "Unspecified High Criticality Emergency (Quick Tap)";
-    }
-
-    // Criticality is assumed HIGH for SOS
-    sendRequest(reason, 'HIGH', 'SOS');
-});
-
-// SOS Cancel Button
-cancelSosBtn.addEventListener('click', () => {
-    sosModal.style.display = 'none';
-});
-
-// --- NEARBY SERVICES MAP LOGIC (New Feature) ---
-
-/**
- * Gets the user's location via the browser's Geolocation API and opens Google Maps
- * searching for the specified service type near those coordinates.
- * @param {string} serviceType The query term (e.g., 'pharmacy', 'clinic').
- */
+// 8. Nearby Service Map Opener
 function openNearbyServiceMap(serviceType) {
-    if (navigator.geolocation) {
-        // Request the current position from the browser
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const encodedServiceType = encodeURIComponent(serviceType);
-                
-                // Construct the Google Maps URL to search for the service near the coordinates.
-                // Opens a search for the service type centered at the user's location (15z is zoom level).
-                const mapUrl = `https://www.google.com/maps/search/${encodedServiceType}/@${lat},${lng},15z`;
-                
-                // Open the map in a new tab
-                window.open(mapUrl, '_blank');
-            },
-            (error) => {
-                console.error("Error getting location:", error);
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const encodedServiceType = encodeURIComponent(serviceType);
 
-                // Handle geolocation errors and provide a fallback
-                let message;
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        message = "Permission to access location was denied. Please allow location access to use this feature.";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        message = "Location information is unavailable.";
-                        break;
-                    case error.TIMEOUT:
-                        message = "The request to get user location timed out.";
-                        break;
-                    default:
-                        message = "An unknown error occurred while getting your location.";
-                        break;
-                }
-                alert(message);
-                
-                // Fallback: Open a general search for the service type near the user's general IP location
-                const fallbackUrl = `https://www.google.com/maps/search/${encodeURIComponent(serviceType + ' near me')}`;
-                window.open(fallbackUrl, '_blank');
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 0
+            // Construct the Google Maps URL to search for the service near the coordinates.
+            const mapUrl = `https://www.google.com/maps/search/${encodedServiceType}/@${lat},${lng},15z`; // 15z is zoom level
+
+            // Open the map in a new tab
+            window.open(mapUrl, '_blank');
+        }, (error) => {
+            console.error("Error getting location:", error);
+            let message;
+            switch(error.code) {
+                case error.PERMISSION_DENIED: message = "Permission to access location was denied. Please allow location access to use this feature."; break;
+                case error.POSITION_UNAVAILABLE: message = "Location information is unavailable."; break;
+                case error.TIMEOUT: message = "The request to get user location timed out."; break;
+                default: message = "An unknown error occurred while trying to get location.";
             }
-        );
+            alert(`Location Error: ${message}`);
+        }, { enableHighAccuracy: false, timeout: 15000 });
     } else {
-        // Browser does not support Geolocation
-        alert("Geolocation is not supported by this browser. Opening a general search for " + serviceType + ".");
-        const fallbackUrl = `https://www.google.com/maps/search/${encodeURIComponent(serviceType + ' near me')}`;
-        window.open(fallbackUrl, '_blank');
+        alert("Geolocation is not supported by your browser or disabled.");
     }
 }
 
 
 // --- Initialization ---
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    renderProgress();
+    // 1. Initial Load: Render patient name and progress
+    const nameDisplay = document.createElement('span');
+    nameDisplay.textContent = patientName;
+    nameDisplay.classList.add('patient-name-display'); // Add a class for styling
+    document.querySelector('.user-profile .profile-info').appendChild(nameDisplay);
+    
+    // Start on Dashboard
+    showDashboard(); 
 
-    // 1. Goal Update Form Button
+    // --- Event Listeners (Linking HTML to JS) ---
+
+    // Nav Links (NEW/MODIFIED)
+    document.getElementById('dashboard-link').addEventListener('click', (event) => {
+        event.preventDefault();
+        showDashboard(); 
+    });
+
+    document.getElementById('prescriptions-link').addEventListener('click', (event) => {
+        event.preventDefault();
+        renderPrescriptions(); 
+    });
+
+    // 1. Goal Update Form Submission
     document.getElementById('goal-update-form').addEventListener('submit', handleGoalUpdate);
 
     // 2. BMI Calculation Button
@@ -465,23 +560,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Doctor Request/Book Now Button (Opens Modal)
     document.querySelector('.book-now-btn').addEventListener('click', handleDoctorRequest);
+    document.getElementById('doctor-request-form').addEventListener('submit', handleDoctorRequestForm); // Form submission
 
     // 4. SOS Floating Button (Opens Modal)
     document.querySelector('.sos-button').addEventListener('click', handleSosButton);
+    document.getElementById('confirm-sos-btn').addEventListener('click', handleConfirmSos); // SOS Confirmation
 
     // 5. Logout Button
     document.getElementById('logout-patient-btn').addEventListener('click', handleLogout);
 
-    // 6. Patient Name Display (Header)
-    const patientProfileDiv = document.querySelector('.user-profile');
-    const logoutLink = document.getElementById('logout-patient-btn');
-
-    if (patientProfileDiv && logoutLink) {
-        patientProfileDiv.innerHTML = `<i class="fas fa-user-circle"></i> <span id="patient-name-display">${patientName}</span>`;
-        patientProfileDiv.appendChild(logoutLink);
-    }
-
-    // 7. Nearby Services Buttons (NEW)
+    // 6. Nearby Services Buttons
     document.getElementById('search-pharmacy-btn').addEventListener('click', (event) => {
         const serviceType = event.currentTarget.getAttribute('data-service-type'); // 'pharmacy'
         openNearbyServiceMap(serviceType);
@@ -490,5 +578,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('search-clinic-btn').addEventListener('click', (event) => {
         const serviceType = event.currentTarget.getAttribute('data-service-type'); // 'clinic'
         openNearbyServiceMap(serviceType);
+    });
+    
+    // Close modals when clicking the X button
+    document.querySelectorAll('.modal .close-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.target.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    // Close modals when clicking outside of them
+    window.addEventListener('click', (event) => {
+        if (event.target === doctorModal) {
+            doctorModal.style.display = 'none';
+        }
+        if (event.target === sosModal) {
+            // Only allow closing if it's the confirmation step, not the status step
+            if (document.getElementById('sos-confirm-step').style.display !== 'none') {
+                sosModal.style.display = 'none';
+            }
+        }
     });
 });

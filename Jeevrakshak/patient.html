@@ -22,14 +22,14 @@
                 <h1><i class="fas fa-heartbeat"></i> JEEV<span class="highlight">RAKSHAK</span></h1>
             </div>
             <nav class="nav-links">
-                <a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="#"><i class="fas fa-file-prescription"></i> Prescriptions</a>
-                <a href="#"><i class="fas fa-file-medical"></i> Records</a>
+                <a href="#" class="nav-link active" id="dashboard-link"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="#" class="nav-link" id="prescriptions-link"><i class="fas fa-file-prescription"></i> Prescriptions</a>
+                <a href="#" class="nav-link" id="records-link"><i class="fas fa-file-medical"></i> Records</a>
             </nav>
             <div class="user-profile">
                 <div class="profile-info">
                     <span class="welcome-text">Welcome Back</span>
-                </div>
+                    </div>
                 <div class="avatar-circle"><i class="fas fa-user"></i></div>
                 <a href="#" id="logout-patient-btn" class="logout-icon-btn"><i class="fas fa-sign-out-alt"></i></a>
             </div>
@@ -166,6 +166,14 @@
         </div>
     </main>
 
+    <section id="prescriptions-view" class="view-container" style="display: none;">
+        <div class="card glass-panel">
+            <h2 class="view-title"><i class="fas fa-file-prescription"></i> My Prescriptions</h2>
+            <p class="view-subtitle">Review your medication history and instructions from your doctor.</p>
+            <div id="prescriptions-list-container" class="list-container">
+                </div>
+        </div>
+    </section>
     <button class="sos-button">
         <span class="sos-text">SOS</span>
         <div class="pulse-ring"></div>

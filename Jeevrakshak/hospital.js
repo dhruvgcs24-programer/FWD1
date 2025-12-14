@@ -1,4 +1,4 @@
-// hospital.js (FINALIZED API-DRIVEN LOGIC with Staff Admission and Deletion)
+// hospital.js (FINALIZED API-DRIVEN LOGIC with Staff Admission, Deletion, and PRESCRIPTION WORKFLOW)
 
 // --- Global Configuration ---
 const API_URL = 'http://localhost:3000/api';
@@ -152,15 +152,20 @@ function renderSOSAlerts(requests) {
         sosRequests.forEach(request => {
             const timeAgo = formatTimeDifference(request.timestamp);
             const criticality = request.criticality ? request.criticality.toUpperCase() : 'HIGH';
+            const patientName = request.patientName || 'Unknown Patient'; // Ensure patientName is available
+
             alertsContainer.innerHTML += `
                 <div class="alert-item sos-alert" data-request-id="${request._id}">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="alert-info">
-                        <h4>SOS! ${request.patientName} - ${criticality} PRIORITY</h4>
+                        <h4>SOS! ${patientName} - ${criticality} PRIORITY</h4>
                         <p>Reason: ${request.reason || 'Immediate Assistance Required'}</p>
                     </div>
                     <span class="alert-time">${timeAgo}</span>
-                    <button class="action-btn resolve" onclick="resolveRequest('${request._id}')">Acknowledge & Resolve</button>
+                    <button class="action-btn resolve" 
+                        onclick="resolveRequestStart('${request._id}', '${patientName}')">
+                        Acknowledge & Resolve
+                    </button>
                 </div>
             `;
         });
@@ -222,7 +227,10 @@ function renderBookNowQueue(requests) {
                 <div class="queue-actions">
                     <span class="priority-tag ${priorityClass}">${criticality.toUpperCase()}</span>
                     <span class="request-time">${timeAgo}</span>
-                    <button class="action-btn resolve hospital-btn" onclick="resolveRequest('${request._id}')">Resolve</button>
+                    <button class="action-btn resolve hospital-btn" 
+                        onclick="resolveRequestStart('${request._id}', '${patientName}')">
+                        Resolve
+                    </button>
                 </div>
             </div>
         `;
@@ -230,36 +238,89 @@ function renderBookNowQueue(requests) {
 }
 
 
-async function resolveRequest(requestId) {
-     if (!confirm(`Are you sure you want to resolve request ID: ${requestId}? This will remove it from the queue.`)) {
+// --- PRESCRIPTION WORKFLOW FUNCTIONS (NEW/MODIFIED) ---
+
+// 1. New Entry point for Resolution (replaces old resolveRequest)
+async function resolveRequestStart(requestId, patientName) {
+     if (!confirm(`Do you want to write a prescription for ${patientName} and resolve request ID: ${requestId}?`)) {
          return;
      }
 
+    // Move to the function that handles the prescription input
+    showPrescriptionModal(requestId, patientName);
+}
+
+// 2. New Function to Show Prescription Input (Simulation via prompt)
+function showPrescriptionModal(requestId, patientName) {
+    // In a real app, this would be a custom HTML modal with form inputs.
+    // We use a simple prompt for simulation.
+    const prescriptionText = prompt(`Enter PRESCRIPTION for ${patientName} (Request ID: ${requestId}):\n\nExample: Paracetamol (500mg) - 2x daily for 3 days.\n\nNOTE: Press Cancel to abort resolution.`);
+
+    if (prescriptionText) {
+        // If the user enters a prescription, call the next step
+        givePrescription(requestId, patientName, prescriptionText);
+    } else if (prescriptionText === "") {
+        alert("Prescription cannot be empty. Request was not resolved.");
+    } else {
+        // User clicked 'Cancel' on the prompt, do nothing.
+        console.log(`Prescription cancelled for request ${requestId}. Resolution aborted.`);
+    }
+}
+
+// 3. New Function to Save Prescription & Resolve Request
+async function givePrescription(requestId, patientName, prescriptionText) {
+    
+    // 1. Prepare Prescription Data
+    const prescriptionData = {
+        requestId: requestId,
+        patientName: patientName,
+        prescription: prescriptionText,
+        // The patient ID would ideally be fetched from the request object in a real app
+    };
+
     try {
-        // NOTE: This endpoint is simulated and should be implemented in server.js
-        const response = await fetch(`${API_URL}/doctor-request/${requestId}/resolve`, {
-            method: 'PUT',
+        // --- STEP 1: SAVE PRESCRIPTION ---
+        console.log("Saving prescription...");
+        const saveResponse = await fetch(`${API_URL}/prescriptions`, {
+            method: 'POST',
             headers: getAuthHeaders(),
+            body: JSON.stringify(prescriptionData)
         });
-        
-        if (response.status === 401 || response.status === 403) {
-            if (authToken) {
-                redirectToLogin("Access denied or session expired.");
-            }
+
+        if (saveResponse.status === 401 || saveResponse.status === 403) {
+            redirectToLogin("Access denied or session expired.");
             return;
         }
 
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        if (!saveResponse.ok) {
+            const errorData = await saveResponse.json();
+            throw new Error(errorData.message || `Failed to save prescription: HTTP status ${saveResponse.status}`);
         }
         
+        // --- STEP 2: RESOLVE REQUEST (DELETE FROM QUEUE) ---
+        console.log("Resolving request and deleting from queue...");
+        const resolveResponse = await fetch(`${API_URL}/doctor-request/${requestId}/resolve`, {
+            method: 'PUT', // The endpoint in server.js uses PUT
+            headers: getAuthHeaders(),
+        });
+
+        if (resolveResponse.status === 401 || resolveResponse.status === 403) {
+            redirectToLogin("Access denied or session expired.");
+            return;
+        }
+
+        if (!resolveResponse.ok) {
+            const data = await resolveResponse.json();
+            throw new Error(data.message || `Failed to resolve request status: HTTP status ${resolveResponse.status}`);
+        }
+
+        // Final UI Update
         loadAndRenderRequests();
-        alert(`Request ${requestId} resolved successfully and removed from the queue.`);
+        alert(`Prescription for ${patientName} saved and Request ${requestId} resolved successfully. Queue refreshed.`);
 
     } catch (error) {
-        console.error('Error resolving request:', error);
-        alert('Failed to resolve request. Check console for details.');
+        console.error('Prescription/Resolution Error:', error);
+        alert('Failed to complete prescription and resolution process. Check console for details.');
     }
 }
 
@@ -617,8 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Back Buttons (Navigation Fix)
     // NOTE: The IDs used here must match the buttons in hospital.html
-    // If you used back-to-dashboard-from-admission-btn, it is also a back button
-    // which should ideally call showDashboard() which loads requests again.
     document.getElementById('back-to-dashboard-from-patient-btn').addEventListener('click', (event) => {
         event.preventDefault();
         showDashboard();
