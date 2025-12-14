@@ -697,6 +697,94 @@ app.delete('/api/staff/:id', authenticateToken, async (req, res) => {
     }
 });
 
+app.delete('/api/patients/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const patientId = req.params.id;
+
+    try {
+        const result = await db.collection('admittedPatients').deleteOne({
+            _id: new ObjectId(patientId),
+            hospitalId: req.user.id // Security check
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Patient not found or already removed.' });
+        }
+
+        // OPTIONAL: Delete related prescriptions if desired
+        // await db.collection('prescriptions').deleteMany({ patientId: patientId });
+
+        res.json({ message: 'Patient record removed successfully.' });
+    } catch (e) {
+        console.error('Delete Patient Error:', e);
+        res.status(500).json({ message: 'Error removing patient record.' });
+    }
+});
+
+// --- NEW ROUTE: GET Patient Full Details (Details + Prescriptions) ---
+app.get('/api/patients/:id/details', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+
+    const patientId = req.params.id;
+
+    try {
+        const patient = await db.collection('admittedPatients').findOne({
+            _id: new ObjectId(patientId),
+            hospitalId: req.user.id
+        });
+
+        if (!patient) return res.status(404).json({ message: 'Patient not found.' });
+        
+        // Find all prescriptions for this patient by their name (assuming 'name' is the lookup key)
+        const prescriptions = await db.collection('prescriptions')
+            .find({ patientName: patient.name })
+            .sort({ prescribedAt: -1 })
+            .toArray();
+            
+        // Return patient details merged with their prescriptions
+        res.json({ ...patient, prescriptions });
+        
+    } catch (e) {
+        console.error('Fetch Patient Details Error:', e);
+        res.status(500).json({ message: 'Error fetching patient details.' });
+    }
+});
+
+// --- NEW ROUTE: POST Prescription (For direct prescription after admission) ---
+app.post('/api/prescribe', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'hospital') return res.status(403).json({ message: 'Access denied.' });
+    const { patientId, patientName, prescriptionText, doctorName } = req.body;
+    
+    if (!patientId || !patientName || !prescriptionText) {
+        return res.status(400).json({ message: 'Missing required prescription fields.' });
+    }
+    
+    // Retrieve hospital name from user data
+    const hospitalUser = await db.collection('users').findOne(
+        { _id: new ObjectId(req.user.id), role: 'hospital' }, 
+        { projection: { name: 1 } }
+    );
+    const hospitalName = hospitalUser?.name || 'Unknown Hospital';
+
+    const prescription = {
+        patientName,
+        patientId: patientId,
+        doctor: doctorName || 'Hospital Staff',
+        prescription: prescriptionText,
+        hospitalName,
+        prescribedAt: new Date(),
+    };
+
+    try {
+        await db.collection('prescriptions').insertOne(prescription);
+        res.status(201).json({ message: 'Prescription saved successfully.' });
+    } catch (e) {
+        console.error('Prescribe Error:', e);
+        res.status(500).json({ message: 'Error saving prescription.' });
+    }
+});
+
 
 // ------------------------------------
 // --- SERVER STARTUP
