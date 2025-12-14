@@ -1,18 +1,24 @@
-/* --- PATIENT DASHBOARD VARIABLES --- */
+/* --- MODERN PATIENT DASHBOARD VARIABLES --- */
 :root {
-    --primary-blue: #0ea5e9;
-    /* Sky Blue */
-    --primary-dark: #0284c7;
-    --success-green: #22c55e;
+    --primary-blue: #3b82f6;
+    --primary-dark: #1d4ed8;
+    --secondary-teal: #14b8a6;
+    --secondary-dark: #0f766e;
     --accent-orange: #f97316;
     --danger-red: #ef4444;
+    --success-green: #22c55e;
 
-    --bg-color: #f0f9ff;
-    --card-bg: #ffffff;
-    --text-primary: #0f172a;
-    --text-muted: #64748b;
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 
-    --shadow-default: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --text-primary: #f8fafc;
+    --text-muted: #cbd5e1;
+    --text-dark: #1e293b;
+    /* For inside white circles etc if needed */
+
+    --shadow-default: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
     --radius: 16px;
 
     --font-heading: 'Outfit', sans-serif;
@@ -26,20 +32,87 @@
 }
 
 body.patient-body {
-    background-color: var(--bg-color);
+    background: var(--bg-gradient);
     font-family: var(--font-body);
     color: var(--text-primary);
     min-height: 100vh;
     padding-bottom: 80px;
-    /* Space for FAB */
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+    /* Prevent horiz scroll from shapes */
 }
+
+/* --- BACKGROUND SHAPES ANIMATION --- */
+.background-shapes {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.4;
+    filter: blur(80px);
+    animation: float 10s infinite ease-in-out;
+}
+
+.shape-1 {
+    width: 500px;
+    height: 500px;
+    background: var(--primary-blue);
+    top: -100px;
+    right: -100px;
+    animation-delay: 0s;
+}
+
+.shape-2 {
+    width: 400px;
+    height: 400px;
+    background: var(--secondary-teal);
+    bottom: -50px;
+    left: -50px;
+    animation-delay: 2s;
+}
+
+.shape-3 {
+    width: 300px;
+    height: 300px;
+    background: #8b5cf6;
+    bottom: 20%;
+    right: 20%;
+    opacity: 0.3;
+    animation-delay: 4s;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-30px) scale(1.05);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
 
 /* --- HEADER --- */
 .header {
-    background: white;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-default);
     padding: 0 40px;
     height: 80px;
     position: sticky;
@@ -59,11 +132,17 @@ body.patient-body {
 .logo h1 {
     font-family: var(--font-heading);
     font-size: 1.6rem;
-    color: var(--text-primary);
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.logo {
+    cursor: pointer;
 }
 
 .highlight {
-    color: var(--primary-blue);
+    color: var(--secondary-teal);
     font-weight: 300;
 }
 
@@ -75,14 +154,17 @@ body.patient-body {
 .nav-links a {
     text-decoration: none;
     color: var(--text-muted);
-    font-weight: 600;
-    transition: color 0.3s;
+    font-weight: 500;
+    transition: all 0.3s;
     font-size: 1rem;
+    padding: 8px 12px;
+    border-radius: 8px;
 }
 
 .nav-links a:hover,
 .nav-links a.active {
-    color: var(--primary-blue);
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .user-profile {
@@ -98,19 +180,20 @@ body.patient-body {
 .welcome-text {
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: white;
 }
 
 .avatar-circle {
     width: 40px;
     height: 40px;
-    background: #e0f2fe;
-    color: var(--primary-blue);
+    background: linear-gradient(135deg, var(--secondary-teal), var(--secondary-dark));
+    color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .logout-icon-btn {
@@ -123,6 +206,93 @@ body.patient-body {
 .logout-icon-btn:hover {
     transform: scale(1.1);
 }
+
+/* --- PROFILE DROPDOWN --- */
+.profile-dropdown-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    top: 120%;
+    right: 0;
+    width: 220px;
+    background: #1e293b;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    display: none;
+    /* Hidden by default */
+    flex-direction: column;
+    z-index: 200;
+    animation: slideDownFade 0.2s ease-out;
+}
+
+.profile-dropdown-menu.show {
+    display: flex;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 5px;
+}
+
+.welcome-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.user-name-display {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 5px 0;
+}
+
+.danger-item:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-red);
+}
+
 
 /* --- DASHBOARD LAYOUT --- */
 .dashboard-container {
@@ -146,35 +316,79 @@ body.patient-body {
     gap: 30px;
 }
 
-/* --- CARDS --- */
+/* --- CARDS (GLASSMORPHISM) --- */
 .glass-panel {
-    background: var(--card-bg);
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     padding: 30px;
     box-shadow: var(--shadow-default);
-    border: 1px solid #eefffd;
-    transition: transform 0.3s;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .glass-panel:hover {
     transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .card h3 {
     font-family: var(--font-heading);
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     margin-bottom: 25px;
-    color: var(--text-primary);
-    border-bottom: 1px solid #f1f5f9;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 15px;
     display: flex;
     align-items: center;
     gap: 10px;
+    font-weight: 600;
 }
 
 .card h3 i {
     color: var(--primary-blue);
 }
+
+/* Health Tips Card */
+.health-tips-card {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(15, 118, 110, 0.2));
+    border-color: rgba(20, 184, 166, 0.3);
+}
+
+.tip-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+#health-tip-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-style: italic;
+    color: #f0f9ff;
+}
+
+.icon-btn-small {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.icon-btn-small:hover {
+    background: white;
+    color: var(--secondary-teal);
+    transform: rotate(180deg);
+}
+
 
 /* Progress Card */
 .progress-layout-wrapper {
@@ -201,7 +415,7 @@ body.patient-body {
 .circle-inner {
     width: 150px;
     height: 150px;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 50%;
     display: flex;
     flex-direction: column;
@@ -298,9 +512,45 @@ body.patient-body {
 .input-group select {
     width: 100%;
     padding: 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     font-family: var(--font-body);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    transition: all 0.3s;
+}
+
+/* Modal Inputs */
+.modal input[type="text"],
+.modal input[type="number"],
+.modal textarea,
+.modal select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e293b;
+    /* Dark text for readability */
+    font-size: 1rem;
+    font-family: var(--font-body);
+    margin-top: 5px;
+}
+
+.modal select {
+    appearance: auto;
+    /* Ensure dropdown arrow is visible */
+    color: #1e293b;
+}
+
+.modal input::placeholder,
+.modal textarea::placeholder {
+    color: #64748b;
+}
+
+.input-group input::placeholder,
+.input-group textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .input-group input:focus {
@@ -337,13 +587,14 @@ body.patient-body {
     align-items: center;
     gap: 15px;
     padding: 15px;
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
     transition: background 0.3s;
 }
 
 .service-item:hover {
-    background: #f1f5f9;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .icon-box {
@@ -381,7 +632,7 @@ body.patient-body {
     height: 35px;
     border-radius: 50%;
     border: none;
-    background: white;
+    background: rgba(255, 255, 255, 0.1);
     color: var(--primary-blue);
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -488,6 +739,275 @@ body.patient-body {
     margin-top: 15px;
 }
 
+/* --- ABOUT US SECTION --- */
+.about-us-section {
+    margin-top: 40px;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.6);
+    /* Darker specific bg */
+}
+
+.about-us-section h2 {
+    font-family: var(--font-heading);
+    color: white;
+    margin-bottom: 10px;
+}
+
+.project-desc {
+    max-width: 600px;
+    margin: 0 auto 30px auto;
+    color: var(--text-muted);
+}
+
+/* Prescription Styles */
+.prescription-item {
+    background: rgba(255, 255, 255, 0.95);
+    /* High opacity for readability */
+    border-left: 5px solid var(--primary-blue);
+    padding: 0;
+    color: #333;
+    overflow: hidden;
+    /* For footer radius */
+    display: flex;
+    flex-direction: column;
+}
+
+.prescription-item .header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 25px 5px 25px;
+}
+
+.prescription-item .header i {
+    font-size: 1.5rem;
+    color: var(--primary-blue);
+    background: #e0f2fe;
+    padding: 12px;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
+}
+
+.prescription-item .details {
+    flex: 1;
+}
+
+.prescription-item h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.prescription-item .date {
+    font-size: 0.85rem;
+    color: #64748b;
+    display: block;
+    margin-top: 4px;
+}
+
+.prescription-content {
+    padding: 10px 25px;
+}
+
+.prescription-text {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: #334155;
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    white-space: pre-wrap;
+}
+
+.prescription-footer {
+    background: #f1f5f9;
+    padding: 12px 25px;
+    margin-top: auto;
+    font-size: 0.9rem;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.prescription-footer i {
+    color: var(--secondary-teal);
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    justify-content: center;
+}
+
+.team-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    transition: transform 0.3s;
+    border: 1px solid transparent;
+}
+
+.team-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-blue);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.team-card img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    border: 3px solid var(--primary-blue);
+}
+
+.team-card h4 {
+    color: white;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.team-card small {
+    color: var(--text-muted);
+}
+
+/* --- CUSTOM NOTIFICATION SYSTEM --- */
+#notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    /* Allow clicking through container */
+}
+
+.notification-toast {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: toastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: auto;
+    /* Re-enable clicks on toasts */
+    position: relative;
+    overflow: hidden;
+}
+
+.notification-toast.hide {
+    animation: toastSlideOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+.notification-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+    display: block;
+}
+
+.notification-message {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    margin-left: 8px;
+    transition: color 0.2s;
+}
+
+.notification-close:hover {
+    color: white;
+}
+
+/* Variants */
+.toast-success {
+    border-left: 4px solid var(--success-green);
+}
+
+.toast-success .notification-icon {
+    color: var(--success-green);
+}
+
+.toast-error {
+    border-left: 4px solid var(--danger-red);
+}
+
+.toast-error .notification-icon {
+    color: var(--danger-red);
+}
+
+.toast-warning {
+    border-left: 4px solid var(--accent-orange);
+}
+
+.toast-warning .notification-icon {
+    color: var(--accent-orange);
+}
+
+.toast-info {
+    border-left: 4px solid var(--primary-blue);
+}
+
+.toast-info .notification-icon {
+    color: var(--primary-blue);
+}
+
 /* --- FAB SOS BUTTON --- */
 .sos-button {
     position: fixed;
@@ -562,13 +1082,16 @@ body.patient-body {
    Actually, let's keep it simple: Standard modal centering. */
 
 .modal-content {
-    background: white;
+    background: #1e293b;
+    /* Dark slate for modal */
     width: 90%;
     max-width: 500px;
     padding: 30px;
     border-radius: var(--radius);
     position: relative;
     margin: 10vh auto;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     /* Fallback */
     animation: slideDown 0.3s ease;
 }
@@ -599,7 +1122,7 @@ body.patient-body {
     align-items: center;
     gap: 15px;
     margin-bottom: 25px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 15px;
 }
 
@@ -646,10 +1169,10 @@ body.patient-body {
 }
 
 .warning-box {
-    background: #fef2f2;
+    background: rgba(239, 68, 68, 0.1);
     padding: 15px;
     border-radius: 8px;
-    color: #991b1b;
+    color: #fca5a5;
     margin-bottom: 20px;
     width: 100%;
     text-align: center;
@@ -658,7 +1181,7 @@ body.patient-body {
 .danger-input {
     width: 100%;
     padding: 12px;
-    border: 1px solid #fecaca;
+    border: 1px solid #7f1d1d;
     border-radius: 8px;
     margin-bottom: 20px;
 }

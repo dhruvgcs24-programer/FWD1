@@ -9,18 +9,63 @@ const REFRESH_INTERVAL = 15000; // 15 seconds for queue auto-update
 function redirectToLogin(message = "Session expired. Please log in again.") {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('current_patient_name');
-    localStorage.removeItem('hospital_patients'); 
-    localStorage.removeItem('hospital_staff'); 
-    alert(message);
-    
+    localStorage.removeItem('hospital_patients');
+    localStorage.removeItem('hospital_staff');
+
+    showCustomAlert(message, 'warning');
+
     // If the current path is the hospital page, we block the redirect
     const currentPath = window.location.pathname.toLowerCase();
     if (currentPath.includes('hospital.html') || currentPath === '/') {
         console.warn("Auth token missing/expired. Alert triggered, but redirect blocked to remain on dashboard.");
-        return; 
+        return;
     }
-    
-    window.location.href = 'login.html';
+
+    // DELAY Redirect
+    setTimeout(() => {
+        window.location.href = 'login.html';
+    }, 2000);
+}
+
+// Global Notification Helper
+function showCustomAlert(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    if (!container) return; // Fallback if container missing
+
+    const toast = document.createElement('div');
+    toast.className = `notification-toast toast-${type}`;
+
+    let iconClass = 'fa-info-circle';
+    let title = 'Info';
+
+    if (type === 'success') { iconClass = 'fa-check-circle'; title = 'Success'; }
+    if (type === 'error') { iconClass = 'fa-exclamation-circle'; title = 'Error'; }
+    if (type === 'warning') { iconClass = 'fa-exclamation-triangle'; title = 'Warning'; }
+
+    toast.innerHTML = `
+        <i class="fas ${iconClass} notification-icon"></i>
+        <div class="notification-content">
+            <span class="notification-title">${title}</span>
+            <span class="notification-message">${message}</span>
+        </div>
+        <button class="notification-close">&times;</button>
+    `;
+
+    container.appendChild(toast);
+
+    // Close on click
+    toast.querySelector('.notification-close').addEventListener('click', () => {
+        toast.classList.add('hide');
+        toast.addEventListener('animationend', () => toast.remove());
+    });
+
+    // Auto close
+    setTimeout(() => {
+        if (toast && toast.parentNode) {
+            toast.classList.add('hide');
+            toast.addEventListener('animationend', () => toast.remove());
+        }
+    }, 5000);
 }
 
 
@@ -56,7 +101,7 @@ function formatTimeDifference(timestamp) {
 async function fetchDoctorRequests() {
     try {
         const response = await fetch(`${API_URL}/doctor-requests`, { headers: getAuthHeaders() });
-        
+
         if (response.status === 401 || response.status === 403) {
             if (authToken) {
                 redirectToLogin("Access denied or session expired.");
@@ -70,7 +115,7 @@ async function fetchDoctorRequests() {
         return await response.json();
     } catch (error) {
         console.error('Error fetching doctor requests:', error);
-        return []; 
+        return [];
     }
 }
 
@@ -78,7 +123,7 @@ async function fetchDoctorRequests() {
 async function fetchPatients() {
     try {
         const response = await fetch(`${API_URL}/patients`, { headers: getAuthHeaders() });
-        
+
         if (response.status === 401 || response.status === 403) {
             if (authToken) {
                 redirectToLogin("Access denied or session expired.");
@@ -92,7 +137,7 @@ async function fetchPatients() {
         return await response.json();
     } catch (error) {
         console.error('Error fetching patient list:', error);
-        return []; 
+        return [];
     }
 }
 
@@ -100,7 +145,7 @@ async function fetchPatients() {
 async function fetchStaff() {
     try {
         const response = await fetch(`${API_URL}/staff`, { headers: getAuthHeaders() });
-        
+
         if (response.status === 401 || response.status === 403) {
             if (authToken) {
                 redirectToLogin("Access denied or session expired.");
@@ -114,40 +159,40 @@ async function fetchStaff() {
         return await response.json();
     } catch (error) {
         console.error('Error fetching staff list:', error);
-        return []; 
+        return [];
     }
 }
 
 
 async function updateDashboardSummary(requests) {
     const sosRequests = requests.filter(r => r.type && r.type.toUpperCase() === 'SOS');
-    const bookNowRequests = requests.filter(r => 
-        !r.type || 
+    const bookNowRequests = requests.filter(r =>
+        !r.type ||
         r.type.toUpperCase() === 'BOOK_NOW' ||
         r.type.toUpperCase() === 'DOCTOR_CONNECT'
     );
-    
+
     // FETCH PATIENT DATA DYNAMICALLY from API
     const allPatients = await fetchPatients();
-    
-    const totalPatientsServed = allPatients.length; 
+
+    const totalPatientsServed = allPatients.length;
     const criticalPatients = allPatients.filter(p => p.initialCondition.toLowerCase() === 'critical' || p.initialCondition.toLowerCase() === 'serious').length;
     const stablePatients = allPatients.filter(p => p.initialCondition.toLowerCase() === 'stable' || p.initialCondition.toLowerCase() === 'fair').length;
 
     document.getElementById('report-total-patients').textContent = totalPatientsServed;
-    document.getElementById('report-critical-patients').textContent = sosRequests.length + criticalPatients; 
+    document.getElementById('report-critical-patients').textContent = sosRequests.length + criticalPatients;
     document.getElementById('report-stable-patients').textContent = stablePatients;
-    document.getElementById('report-doctor-requests').textContent = bookNowRequests.length; 
+    document.getElementById('report-doctor-requests').textContent = bookNowRequests.length;
 }
 
 function renderSOSAlerts(requests) {
     const alertsContainer = document.getElementById('critical-alerts-content');
     if (!alertsContainer) return;
-    
+
     const sosRequests = requests.filter(r => r.type && r.type.toUpperCase() === 'SOS');
-    
+
     alertsContainer.innerHTML = '';
-    
+
     if (sosRequests.length > 0) {
         sosRequests.forEach(request => {
             const timeAgo = formatTimeDifference(request.timestamp);
@@ -169,7 +214,7 @@ function renderSOSAlerts(requests) {
                 </div>
             `;
         });
-        
+
     } else {
         alertsContainer.innerHTML = `
             <div class="alert-item default-alert">
@@ -184,14 +229,14 @@ function renderBookNowQueue(requests) {
     const queueContainer = document.getElementById('request-queue-content');
     const queueCountBadge = document.getElementById('queue-count-badge');
     if (!queueContainer || !queueCountBadge) return;
-    
-    const queueRequests = requests.filter(r => 
-        !r.type || 
+
+    const queueRequests = requests.filter(r =>
+        !r.type ||
         r.type.toUpperCase() === 'BOOK_NOW' ||
         r.type.toUpperCase() === 'DOCTOR_CONNECT'
     );
 
-    queueContainer.innerHTML = ''; 
+    queueContainer.innerHTML = '';
     queueCountBadge.textContent = queueRequests.length;
 
     if (queueRequests.length === 0) {
@@ -213,11 +258,11 @@ function renderBookNowQueue(requests) {
     queueRequests.forEach((request, index) => {
         const patientName = request.patientName || 'Unknown Patient';
         const reason = request.reason || 'Standard Consultation';
-        
+
         const criticality = request.criticality ? request.criticality.toLowerCase() : 'low';
         const priorityClass = `${criticality}-priority`;
         const timeAgo = formatTimeDifference(request.timestamp);
-        
+
         queueContainer.innerHTML += `
             <div class="queue-item" data-request-id="${request._id}">
                 <div class="queue-info">
@@ -242,16 +287,16 @@ function renderBookNowQueue(requests) {
 
 // Entry point for Resolution using a simple prompt (used for dashboard queue)
 function resolveRequestStart(requestId, patientName) {
-     if (!confirm(`Do you want to write a prescription for ${patientName} and resolve request ID: ${requestId}?`)) {
-         return;
-     }
+    if (!confirm(`Do you want to write a prescription for ${patientName} and resolve request ID: ${requestId}?`)) {
+        return;
+    }
 
     const prescriptionText = prompt(`Enter PRESCRIPTION for ${patientName} (Request ID: ${requestId}):\n\nNOTE: Press Cancel to abort resolution.`);
 
     if (prescriptionText) {
         givePrescriptionAndResolve(requestId, patientName, prescriptionText);
     } else if (prescriptionText === "") {
-        alert("Prescription cannot be empty. Request was not resolved.");
+        showCustomAlert("Prescription cannot be empty. Request was not resolved.", "warning");
     } else {
         console.log(`Prescription cancelled for request ${requestId}. Resolution aborted.`);
     }
@@ -260,13 +305,13 @@ function resolveRequestStart(requestId, patientName) {
 
 // Function to Save Prescription & Resolve Request (used for dashboard queue - Kept as is)
 async function givePrescriptionAndResolve(requestId, patientName, prescriptionText) {
-    
+
     // 1. Prepare Prescription Data
     const prescriptionData = {
         requestId: requestId,
         patientName: patientName,
         prescription: prescriptionText,
-        doctorName: 'Queue Resolution Staff' 
+        doctorName: 'Queue Resolution Staff'
     };
 
     try {
@@ -287,11 +332,11 @@ async function givePrescriptionAndResolve(requestId, patientName, prescriptionTe
             const errorData = await saveResponse.json();
             throw new Error(errorData.message || `Failed to save prescription: HTTP status ${saveResponse.status}`);
         }
-        
+
         // --- STEP 2: RESOLVE REQUEST (DELETE FROM QUEUE) ---
         console.log("Resolving request and deleting from queue...");
         const resolveResponse = await fetch(`${API_URL}/doctor-request/${requestId}/resolve`, {
-            method: 'PUT', 
+            method: 'PUT',
             headers: getAuthHeaders(),
         });
 
@@ -307,19 +352,19 @@ async function givePrescriptionAndResolve(requestId, patientName, prescriptionTe
 
         // Final UI Update
         loadAndRenderRequests();
-        alert(`Prescription for ${patientName} saved and Request ${requestId} resolved successfully. Queue refreshed.`);
+        showCustomAlert(`Prescription for ${patientName} saved and Request ${requestId} resolved successfully. Queue refreshed.`, "success");
 
     } catch (error) {
         console.error('Prescription/Resolution Error:', error);
-        alert('Failed to complete prescription and resolution process. Check console for details.');
+        showCustomAlert('Failed to complete prescription and resolution process. Check console for details.', "error");
     }
 }
 
 // Global function to load and render both alerts and queue
 async function loadAndRenderRequests() {
     const requests = await fetchDoctorRequests();
-    
-    await updateDashboardSummary(requests); 
+
+    await updateDashboardSummary(requests);
     renderSOSAlerts(requests);
     renderBookNowQueue(requests);
 }
@@ -329,12 +374,12 @@ async function loadAndRenderRequests() {
 // Renders the patient list from the API 
 async function renderPatientList() {
     const patients = await fetchPatients();
-    
+
     const tableBody = document.querySelector('#patient-details-table-body');
     if (!tableBody) return;
-    
+
     tableBody.innerHTML = '';
-    
+
     if (patients.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="7" class="no-data-row">No patient records found.</td></tr>`;
         return;
@@ -342,16 +387,16 @@ async function renderPatientList() {
 
     patients.forEach(p => {
         const row = tableBody.insertRow();
-        
-        const patientID = p.id || p._id; 
+
+        const patientID = p.id || p._id;
         const patientName = p.name;
         const patientAge = p.age;
-        const patientWard = p.ward; 
+        const patientWard = p.ward;
         const patientCondition = p.initialCondition;
         const patientAdmittedAt = new Date(p.admittedAt).toLocaleDateString();
-        
+
         const conditionClass = `status-badge ${patientCondition.toLowerCase()}-priority`;
-        const patientMongoId = p._id; 
+        const patientMongoId = p._id;
 
         row.innerHTML = `
             <td>${patientID}</td>
@@ -367,7 +412,7 @@ async function renderPatientList() {
             </td>
         `;
     });
-    
+
     showView('patient-details-view');
 }
 
@@ -377,30 +422,30 @@ async function viewPatientProfile(patientId) {
         const response = await fetch(`${API_URL}/patients/${patientId}/details`, { headers: getAuthHeaders() });
 
         if (response.status === 404) {
-             alert('Patient not found.');
-             renderPatientList();
-             return;
+            showCustomAlert('Patient not found.', "error");
+            renderPatientList();
+            return;
         }
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const patient = await response.json();
-        
+
         // Populate header and action buttons
         const patientHeader = document.getElementById('patient-details-header');
         if (patientHeader) patientHeader.textContent = `Comprehensive Report for ${patient.name}`;
 
         const writePrescriptionBtn = document.getElementById('write-prescription-btn');
         if (writePrescriptionBtn) writePrescriptionBtn.onclick = () => showPatientPrescriptionModal(patient._id, patient.name);
-        
+
         const deletePatientBtn = document.getElementById('delete-patient-btn');
         if (deletePatientBtn) deletePatientBtn.onclick = () => deletePatient(patient._id, patient.name);
-        
+
         // Populate basic info 
         const basicInfoDiv = document.getElementById('patient-basic-info');
-        if(basicInfoDiv) {
+        if (basicInfoDiv) {
             basicInfoDiv.innerHTML = `
                 <p><strong>Patient ID:</strong> ${patient.id || patient._id}</p>
                 <p><strong>Patient Name:</strong> ${patient.name}</p>
@@ -415,17 +460,17 @@ async function viewPatientProfile(patientId) {
 
         // Populate prescription history
         const prescriptionsDiv = document.getElementById('patient-prescription-history');
-        if(prescriptionsDiv) {
-            prescriptionsDiv.innerHTML = ''; 
-            
+        if (prescriptionsDiv) {
+            prescriptionsDiv.innerHTML = '';
+
             if (patient.prescriptions && patient.prescriptions.length > 0) {
                 // Sort by date descending
                 patient.prescriptions.sort((a, b) => new Date(b.prescribedAt) - new Date(a.prescribedAt));
-                
+
                 patient.prescriptions.forEach(p => {
                     const date = new Date(p.prescribedAt).toLocaleDateString();
                     const time = new Date(p.prescribedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
+
                     prescriptionsDiv.innerHTML += `
                         <div class="prescription-card glass-panel-sm">
                             <div class="header">
@@ -446,10 +491,10 @@ async function viewPatientProfile(patientId) {
 
         // Switch view to the single patient profile
         showView('single-patient-profile-view');
-        
+
     } catch (error) {
         console.error('View Patient Profile Error:', error);
-        alert('Failed to fetch patient details. Ensure /api/patients/:id/details is available.');
+        showCustomAlert('Failed to fetch patient details.', "error");
     }
 }
 
@@ -458,14 +503,14 @@ function showPatientPrescriptionModal(patientId, patientName) {
     const modal = document.getElementById('prescription-modal');
     if (!modal) {
         console.error("Prescription modal element not found.");
-        return alert("Prescription modal not found in HTML. Check hospital.html structure.");
+        return showCustomAlert("Prescription modal not found in HTML. Check hospital.html structure.", "error");
     }
 
     document.getElementById('prescribe-patient-id').value = patientId;
     document.getElementById('prescribe-patient-name').textContent = patientName;
-    
+
     const form = document.getElementById('prescription-form');
-    if(form) form.reset();
+    if (form) form.reset();
 
     modal.style.display = 'flex';
 }
@@ -478,9 +523,9 @@ async function submitPatientPrescription(event) {
     const patientName = document.getElementById('prescribe-patient-name').textContent;
     const prescriptionText = document.getElementById('prescription-text').value;
     const doctorName = document.getElementById('prescription-doctor-name').value || 'Hospital Staff';
-    
+
     if (!prescriptionText) {
-        alert('Prescription details cannot be empty.');
+        showCustomAlert('Prescription details cannot be empty.', "warning");
         return;
     }
 
@@ -502,19 +547,19 @@ async function submitPatientPrescription(event) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        alert(`Prescription saved for ${patientName} successfully.`);
+        showCustomAlert(`Prescription saved for ${patientName} successfully.`, "success");
         document.getElementById('prescription-modal').style.display = 'none';
-        
+
         // Refresh the profile view if the user is currently on it
         if (document.getElementById('single-patient-profile-view').style.display === 'block') {
-             viewPatientProfile(patientId); 
+            viewPatientProfile(patientId);
         } else {
-             renderPatientList();
+            renderPatientList();
         }
-       
+
     } catch (error) {
         console.error('Submit Patient Prescription Error:', error);
-        alert('Failed to save prescription. Check the server and console.');
+        showCustomAlert('Failed to save prescription. Check the server and console.', "error");
     }
 }
 
@@ -537,9 +582,9 @@ async function deletePatient(patientId, patientName) {
         }
 
         if (response.status === 404) {
-             alert('Patient not found or already removed.');
-             renderPatientList();
-             return;
+            showCustomAlert('Patient not found or already removed.', "error");
+            renderPatientList();
+            return;
         }
 
         if (!response.ok) {
@@ -547,13 +592,13 @@ async function deletePatient(patientId, patientName) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        alert(`Patient ${patientName} record successfully discharged and deleted.`);
-        
+        showCustomAlert(`Patient ${patientName} record successfully discharged and deleted.`, "success");
+
         // Return to the patient list after deletion
-        renderPatientList(); 
+        renderPatientList();
     } catch (error) {
         console.error('Delete Patient Error:', error);
-        alert('Failed to delete patient record. Check the server and console.');
+        showCustomAlert('Failed to delete patient record. Check the server and console.', "error");
     }
 }
 
@@ -561,20 +606,20 @@ async function deletePatient(patientId, patientName) {
 // Sends patient admission data to the API
 async function admitPatient(event) {
     event.preventDefault();
-    
+
     const name = document.getElementById('new-patient-name').value;
     const age = parseInt(document.getElementById('new-patient-age').value);
-    const ward = document.getElementById('new-patient-ward').value; 
+    const ward = document.getElementById('new-patient-ward').value;
     const initialCondition = document.getElementById('new-patient-condition').value;
 
     const patientData = {
         id: document.getElementById('new-patient-id').value,
-        name: name, 
-        age: age, 
-        ward: ward, 
-        initialCondition: initialCondition, 
+        name: name,
+        age: age,
+        ward: ward,
+        initialCondition: initialCondition,
     };
-    
+
     try {
         const response = await fetch(`${API_URL}/admit-patient`, {
             method: 'POST',
@@ -591,14 +636,14 @@ async function admitPatient(event) {
             const errorData = await response.json();
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        
-        alert(`Patient ${name} admitted successfully. You can now prescribe or view profile.`);
+
+        showCustomAlert(`Patient ${name} admitted successfully. You can now prescribe or view profile.`, "success");
         document.getElementById('patient-admission-form').reset();
-        
-        showDashboard(); 
+
+        showDashboard();
     } catch (error) {
         console.error('Admission Error:', error);
-        alert('Failed to admit patient. Please check the server and console.');
+        showCustomAlert('Failed to admit patient. Please check the server and console.', "error");
     }
 }
 
@@ -606,7 +651,7 @@ async function admitPatient(event) {
 // Function to add new staff member
 async function addStaff(event) {
     event.preventDefault();
-    
+
     const staffData = {
         id: document.getElementById('new-staff-id').value,
         name: document.getElementById('new-staff-name').value,
@@ -614,7 +659,7 @@ async function addStaff(event) {
         shift: document.getElementById('new-staff-shift').value,
         contact: document.getElementById('new-staff-contact').value
     };
-    
+
     try {
         const response = await fetch(`${API_URL}/staff`, {
             method: 'POST',
@@ -631,15 +676,15 @@ async function addStaff(event) {
             const errorData = await response.json();
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        
-        alert(`Staff member ${staffData.name} added successfully.`);
+
+        showCustomAlert(`Staff member ${staffData.name} added successfully.`, "success");
         document.getElementById('staff-admission-form').reset();
-        
+
         // Return to the updated staffing report view
-        showStaffingReport(); 
+        showStaffingReport();
     } catch (error) {
         console.error('Add Staff Error:', error);
-        alert('Failed to add staff member. Check the server and console.');
+        showCustomAlert('Failed to add staff member. Check the server and console.', "error");
     }
 }
 
@@ -662,31 +707,31 @@ async function deleteStaff(staffMongoId, staffName) {
         }
 
         if (response.status === 404) {
-             alert('Staff member not found or they do not belong to this hospital.');
-             showStaffingReport();
-             return;
+            showCustomAlert('Staff member not found or they do not belong to this hospital.', "error");
+            showStaffingReport();
+            return;
         }
 
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        
-        alert(`Staff member ${staffName} successfully removed.`);
-        
+
+        showCustomAlert(`Staff member ${staffName} successfully removed.`, "success");
+
         // Refresh the staffing report view to update the table
-        showStaffingReport(); 
+        showStaffingReport();
     } catch (error) {
         console.error('Delete Staff Error:', error);
-        alert('Failed to remove staff member. Check the server and console.');
+        showCustomAlert('Failed to remove staff member. Check the server and console.', "error");
     }
 }
 
 
 // Renders the staff list from the API 
 async function showStaffingReport() {
-    const staff = await fetchStaff(); 
-    
+    const staff = await fetchStaff();
+
     const doctors = staff.filter(s => s.role.toLowerCase().includes('doctor') || s.role.toLowerCase().includes('physician') || s.role.toLowerCase().includes('surgeon'));
     const nurses = staff.filter(s => s.role.toLowerCase().includes('nurse'));
     const admin = staff.filter(s => s.role.toLowerCase().includes('admin') || s.role.toLowerCase().includes('admissions'));
@@ -700,16 +745,16 @@ async function showStaffingReport() {
     // Render Detailed Staff List table
     const tableBody = document.getElementById('staffing-table-body');
     tableBody.innerHTML = '';
-    
+
     if (staff.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="6" class="no-data-row">No staff records found for this hospital.</td></tr>`;
     } else {
         staff.forEach(s => {
             const row = tableBody.insertRow();
-            
+
             // Logic to determine status class based on shift
             let statusText = s.shift;
-            let statusClass = 'status-badge default-badge'; 
+            let statusClass = 'status-badge default-badge';
             if (s.shift.toLowerCase() === 'day') {
                 statusText = 'On Duty (Day)';
                 statusClass = 'status-badge low-priority';
@@ -720,7 +765,7 @@ async function showStaffingReport() {
                 statusText = 'On Call';
                 statusClass = 'status-badge default-badge';
             }
-            
+
             row.innerHTML = `
                 <td>${s.staffId}</td>
                 <td>${s.name}</td>
@@ -746,12 +791,12 @@ async function showStaffingReport() {
 function requestCylinders() {
     const quantityInput = document.getElementById('cylinder-quantity');
     const quantity = parseInt(quantityInput.value);
-    
+
     // Placeholder for Hospital ID
-    const hospitalId = "HOSP_JVKSHK_001"; 
+    const hospitalId = "HOSP_JVKSHK_001";
 
     if (isNaN(quantity) || quantity <= 0) {
-        alert("Please enter a valid quantity of oxygen cylinders (must be 1 or more).");
+        showCustomAlert("Please enter a valid quantity of oxygen cylinders (must be 1 or more).", "warning");
         return;
     }
 
@@ -761,8 +806,8 @@ function requestCylinders() {
     console.log(`Requested Quantity: ${quantity} cylinders`);
     console.log(`Timestamp: ${new Date().toISOString()}`);
     console.log("-----------------------------------------");
-    
-    alert(`Request for ${quantity} oxygen cylinders logged to console (Simulation successful).`);
+
+    showCustomAlert(`Request for ${quantity} oxygen cylinders logged to console (Simulation successful).`, "success");
 }
 
 
@@ -771,18 +816,18 @@ function requestCylinders() {
 // Function to manage view visibility (UPDATED to include new views)
 function showView(viewId) {
     // All possible views must be hidden first
-    document.getElementById('main-dashboard-view').style.display = 'none'; 
+    document.getElementById('main-dashboard-view').style.display = 'none';
     document.getElementById('patient-details-view').style.display = 'none';
     document.getElementById('patient-admission-view').style.display = 'none';
     document.getElementById('staffing-report-view').style.display = 'none';
     document.getElementById('staff-admission-view').style.display = 'none';
-    
+
     // NEW VIEWS
     const singlePatientProfileView = document.getElementById('single-patient-profile-view');
     if (singlePatientProfileView) {
         singlePatientProfileView.style.display = 'none';
     }
-    
+
     // NOTE: The prescription modal uses 'display: flex' for visibility
     const prescriptionModal = document.getElementById('prescription-modal');
     if (prescriptionModal) {
@@ -797,14 +842,14 @@ function showView(viewId) {
             requestedView.style.display = 'block';
         } else {
             // Handle main dashboard view
-            requestedView.style.display = 'flex'; 
+            requestedView.style.display = 'flex';
         }
     }
 }
 
 function showDashboard() {
     showView('main-dashboard-view');
-    loadAndRenderRequests(); 
+    loadAndRenderRequests();
 }
 
 
@@ -813,17 +858,17 @@ function showDashboard() {
 document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load and auto-refresh setup
-    showDashboard(); 
-    setInterval(loadAndRenderRequests, REFRESH_INTERVAL); 
+    showDashboard();
+    setInterval(loadAndRenderRequests, REFRESH_INTERVAL);
 
     // --- Event Listeners (Linking HTML to JS) ---
-    
-    const dashboardLink = document.querySelector('.logo h1'); 
+
+    const dashboardLink = document.querySelector('.logo h1');
     if (dashboardLink) {
         dashboardLink.style.cursor = 'pointer';
         dashboardLink.addEventListener('click', showDashboard);
     }
-    
+
     // Quick Actions
     document.getElementById('admit-patient-btn').addEventListener('click', (event) => {
         event.preventDefault();
@@ -839,18 +884,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // STAFF LOGIC LISTENERS
     document.getElementById('staff-admission-form').addEventListener('submit', addStaff);
-    
+
     const addStaffBtn = document.getElementById('add-staff-btn');
     // Staffing Report View button
     const addStaffReportBtn = document.getElementById('add-staff-report-btn');
-    
+
     if (addStaffBtn) {
         addStaffBtn.addEventListener('click', (event) => {
             event.preventDefault();
             showView('staff-admission-view');
         });
     }
-    
+
     if (addStaffReportBtn) {
         addStaffReportBtn.addEventListener('click', (event) => {
             event.preventDefault();
@@ -866,13 +911,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showStaffingReport();
         });
     }
-    
+
     // NEW Back button from single patient profile to patient list
     const backToPatientListFromProfileBtn = document.getElementById('back-to-patient-list-from-profile-btn');
     if (backToPatientListFromProfileBtn) {
         backToPatientListFromProfileBtn.addEventListener('click', (event) => {
             event.preventDefault();
-            renderPatientList(); 
+            renderPatientList();
         });
     }
 
@@ -886,14 +931,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Navbar Links
     document.getElementById('staffing-link').addEventListener('click', (event) => {
         event.preventDefault();
-        showStaffingReport(); 
+        showStaffingReport();
     });
-    
+
     document.getElementById('patient-details-link').addEventListener('click', (event) => {
         event.preventDefault();
-        renderPatientList(); 
+        renderPatientList();
     });
-    
+
     // Back Buttons (Navigation Fix)
     document.getElementById('back-to-dashboard-from-patient-btn').addEventListener('click', (event) => {
         event.preventDefault();
@@ -903,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         showDashboard();
     });
-    
+
     // Logout Button
     document.getElementById('logout-hospital-btn').addEventListener('click', (event) => {
         event.preventDefault();

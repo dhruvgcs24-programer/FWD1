@@ -1,27 +1,28 @@
 /* --- MODERN HOSPITAL DASHBOARD VARIABLES --- */
 :root {
-    --primary-blue: #2563eb;
-    /* Royal Blue */
-    --primary-light: #eff6ff;
-    --success-green: #10b981;
+    --primary-blue: #3b82f6;
+    --primary-light: #60a5fa;
+    --success-green: #22c55e;
     --warning-orange: #f59e0b;
     --danger-red: #ef4444;
-    --dark-bg: #f3f4f6;
-    /* Light Grey BG */
-    --white: #ffffff;
 
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 
-    --glass-bg: #ffffff;
-    /* Using solid white for hospital for cleaner look check transparency later if needed */
-    --panel-border: 1px solid #e5e7eb;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-highlight: rgba(255, 255, 255, 0.05);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    /* Brighter for dark mode visibility */
+    --text-muted: #94a3b8;
 
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Plus Jakarta Sans', sans-serif;
     --radius: 12px;
+
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -31,18 +32,84 @@
 }
 
 body.hospital-body {
-    background-color: #f1f5f9;
-    /* Slate 100 */
+    background: var(--bg-gradient);
     font-family: var(--font-body);
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* --- BACKGROUND SHAPES ANIMATION --- */
+.background-shapes {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.3;
+    filter: blur(90px);
+    animation: float 12s infinite ease-in-out;
+}
+
+.shape-1 {
+    width: 600px;
+    height: 600px;
+    background: #1e3a8a;
+    /* Darker blue */
+    top: -200px;
+    right: -100px;
+    animation-delay: 0s;
+}
+
+.shape-2 {
+    width: 500px;
+    height: 500px;
+    background: #115e59;
+    /* Teal */
+    bottom: -100px;
+    left: -100px;
+    animation-delay: 3s;
+}
+
+.shape-3 {
+    width: 300px;
+    height: 300px;
+    background: #7c3aed;
+    /* Violet */
+    bottom: 30%;
+    right: 30%;
+    opacity: 0.2;
+    animation-delay: 6s;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-40px) scale(1.05);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* --- NAVBAR --- */
 .navbar {
-    background: var(--white);
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px);
     padding: 0 40px;
     height: 80px;
     display: flex;
@@ -52,12 +119,13 @@ body.hospital-body {
     z-index: 100;
     position: sticky;
     top: 0;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .logo h1 {
     font-family: var(--font-heading);
     font-size: 1.6rem;
-    color: var(--text-primary);
+    color: white;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -68,7 +136,7 @@ body.hospital-body {
 }
 
 .highlight {
-    color: var(--primary-blue);
+    color: var(--primary-light);
     font-weight: 300;
 }
 
@@ -82,23 +150,26 @@ body.hospital-body {
 .nav-item {
     text-decoration: none;
     color: var(--text-secondary);
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.95rem;
-    transition: color 0.2s;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
 }
 
 .nav-item:hover {
-    color: var(--primary-blue);
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .profile-icon img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    box-shadow: 0 0 0 2px var(--primary-light), 0 0 0 4px rgba(72, 187, 120, 0.2);
+    box-shadow: 0 0 0 2px var(--primary-blue);
 }
 
 /* --- MAIN DASHBOARD LAYOUT (FULL WIDTH) --- */
@@ -115,24 +186,26 @@ body.hospital-body {
     gap: 30px;
     width: 100%;
     max-width: 1920px;
-    /* Limit only on ultra-wide screens */
     margin: 0 auto;
 }
 
 /* Common Panel Styling */
 .glass-panel {
-    background: var(--white);
-    border: var(--panel-border);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     padding: 25px;
     box-shadow: var(--shadow-sm);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     margin-bottom: 25px;
+    backdrop-filter: blur(10px);
 }
 
 .glass-panel:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+    background: rgba(255, 255, 255, 0.12);
+    /* Slightly lighter on hover */
 }
 
 .card h2 {
@@ -140,7 +213,10 @@ body.hospital-body {
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 20px;
-    color: var(--text-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .card-header-row {
@@ -165,6 +241,7 @@ body.hospital-body {
 /* Critical Alerts */
 .critical-alerts {
     border-left: 5px solid var(--danger-red);
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
 }
 
 .pulse-dot {
@@ -201,17 +278,26 @@ body.hospital-body {
 }
 
 .alert-item.sos-alert {
-    background: #fef2f2;
+    background: rgba(239, 68, 68, 0.15);
+    /* Darker red bg */
     padding: 15px;
     border-radius: 8px;
-    border: 1px solid #fecaca;
+    border: 1px solid rgba(239, 68, 68, 0.3);
     margin-top: 10px;
     align-items: center;
 }
 
 .alert-item.sos-alert i {
     font-size: 1.8rem;
-    color: var(--danger-red);
+    color: #fca5a5;
+}
+
+.alert-item.sos-alert .alert-text strong {
+    color: #fca5a5;
+}
+
+.alert-item.sos-alert .alert-text p {
+    color: #fecaca;
 }
 
 .alert-item.sos-alert .resolve {
@@ -233,21 +319,21 @@ body.hospital-body {
 }
 
 .summary-card {
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
     padding: 20px;
     border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 15px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--glass-border);
 }
 
 .icon-box {
     width: 50px;
     height: 50px;
     border-radius: 12px;
-    background: #dbeafe;
-    color: var(--primary-blue);
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -255,18 +341,18 @@ body.hospital-body {
 }
 
 .icon-box.warning {
-    background: #fef3c7;
-    color: var(--warning-orange);
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
 }
 
 .icon-box.success {
-    background: #d1fae5;
-    color: var(--success-green);
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
 }
 
 .icon-box.info {
-    background: #e0e7ff;
-    color: #6366f1;
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
 }
 
 .summary-info h3 {
@@ -279,7 +365,7 @@ body.hospital-body {
 .summary-info p {
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: white;
     line-height: 1;
 }
 
@@ -294,7 +380,7 @@ body.hospital-body {
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .queue-item:last-child {
@@ -389,7 +475,9 @@ body.hospital-body {
 }
 
 .oxygen-control {
-    background: #f1f5f9;
+    background: rgba(255, 255, 255, 0.05);
+    /* Glass dark bg */
+    border: 1px solid var(--glass-border);
     padding: 15px;
     border-radius: 12px;
     display: flex;
@@ -404,6 +492,7 @@ body.hospital-body {
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--text-primary);
 }
 
 .control-row {
@@ -415,7 +504,9 @@ body.hospital-body {
     width: 60px;
     padding: 8px;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    color: white;
 }
 
 .request-btn {
@@ -443,11 +534,11 @@ body.hospital-body {
 }
 
 .staff-count {
-    background: #f8fafb;
+    background: rgba(255, 255, 255, 0.05);
     padding: 15px;
     border-radius: 8px;
     text-align: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--glass-border);
 }
 
 .staff-count i {
@@ -490,7 +581,7 @@ body.hospital-body {
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px dashed #eee;
+    border-bottom: 1px dashed var(--glass-border);
     font-size: 0.95rem;
     color: var(--text-secondary);
 }
@@ -568,7 +659,8 @@ body.hospital-body {
 /* --- FULL SCREEN VIEWS --- */
 .full-screen-view {
     padding: 30px 40px;
-    background: #f8fafc;
+    background: transparent;
+    /* Let body gradient show */
     min-height: calc(100vh - 80px);
     /* Minus Navbar */
 }
@@ -601,11 +693,12 @@ body.hospital-body {
 }
 
 .glass-panel-large {
-    background: var(--white);
+    background: var(--glass-bg);
     border-radius: 12px;
     padding: 30px;
     box-shadow: var(--shadow-sm);
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(14px);
 }
 
 /* Tables */
@@ -629,23 +722,24 @@ body.hospital-body {
     padding: 10px 15px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 2px solid var(--glass-border);
 }
 
 .modern-table tbody td {
-    background-color: #fcfdfe;
+    background-color: rgba(255, 255, 255, 0.02);
     padding: 15px;
     font-size: 0.95rem;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--glass-border);
     vertical-align: middle;
+    color: var(--text-primary);
 }
 
 .modern-table tbody tr:hover td {
-    background-color: #f1f5f9;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .modern-table tbody tr:first-child td {
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--glass-border);
 }
 
 .modern-table tbody tr td:first-child {
@@ -748,16 +842,30 @@ body.hospital-body {
 .input-group select {
     width: 100%;
     padding: 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     font-family: var(--font-body);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+/* Force dark option background for readability in white text dropdowns */
+.input-group select option {
+    background-color: #1e293b;
+    color: white;
+}
+
+.input-group input::placeholder,
+.input-group select::placeholder,
+.control-row input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .input-group input:focus,
 .input-group select:focus {
     outline: none;
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .submit-btn {

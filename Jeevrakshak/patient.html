@@ -16,6 +16,12 @@
 
 <body class="patient-body">
 
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
     <header class="header">
         <div class="header-inner">
             <div class="logo">
@@ -23,15 +29,27 @@
             </div>
             <nav class="nav-links">
                 <a href="#" class="nav-link active" id="dashboard-link"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="#" class="nav-link" id="prescriptions-link"><i class="fas fa-file-prescription"></i> Prescriptions</a>
-                <a href="#" class="nav-link" id="records-link"><i class="fas fa-file-medical"></i> Records</a>
+                <a href="#" class="nav-link" id="prescriptions-link"><i class="fas fa-file-prescription"></i>
+                    Prescriptions</a>
+                <a href="#" class="nav-link" id="about-us-link"><i class="fas fa-info-circle"></i> About Us</a>
             </nav>
             <div class="user-profile">
-                <div class="profile-info">
-                    <span class="welcome-text">Welcome Back</span>
+                <div class="profile-dropdown-container">
+                    <div class="avatar-circle" id="profile-trigger">
+                        <i class="fas fa-user"></i>
                     </div>
-                <div class="avatar-circle"><i class="fas fa-user"></i></div>
-                <a href="#" id="logout-patient-btn" class="logout-icon-btn"><i class="fas fa-sign-out-alt"></i></a>
+                    <div class="profile-dropdown-menu" id="profile-dropdown">
+                        <div class="dropdown-header">
+                            <span class="welcome-label">Welcome,</span>
+                            <span class="user-name-display" id="dropdown-user-name">User</span>
+                        </div>
+                        <a href="#" class="dropdown-item"><i class="fas fa-user-cog"></i> My Profile</a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" id="logout-patient-btn" class="dropdown-item danger-item"><i
+                                class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -40,6 +58,15 @@
         <div class="dashboard-grid">
 
             <section class="left-column">
+
+                <div class="card health-tips-card glass-panel">
+                    <h3><i class="fas fa-apple-alt"></i> Health Tip of the Moment</h3>
+                    <div class="tip-content">
+                        <p id="health-tip-text">Loading health tip...</p>
+                        <button id="refresh-tip-btn" class="icon-btn-small" title="New Tip"><i
+                                class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
 
                 <div class="card progress-card glass-panel">
                     <h3>Today's Wellness</h3>
@@ -118,7 +145,8 @@
                         <button id="search-pharmacy-btn" class="submit-request-btn" data-service-type="pharmacy">
                             <i class="fas fa-prescription-bottle"></i> Nearby Pharmacies
                         </button>
-                        <button id="search-clinic-btn" class="submit-request-btn" data-service-type="clinic" style="background-color: var(--accent-orange);">
+                        <button id="search-clinic-btn" class="submit-request-btn" data-service-type="clinic"
+                            style="background-color: var(--accent-orange);">
                             <i class="fas fa-hospital-alt"></i> Nearby Clinics
                         </button>
                     </div>
@@ -164,14 +192,48 @@
 
             </section>
         </div>
+
     </main>
+
+    <section class="about-us-section glass-panel" id="about-us">
+        <h2>From the Creators</h2>
+        <p class="project-desc">JeevRakshak is designed to bridge the gap between patients and emergency care with
+            seamless technology.</p>
+
+        <div class="team-grid">
+            <div class="team-card">
+                <img src="https://ui-avatars.com/api/?name=Ayush+Tripathi&background=0D8ABC&color=fff"
+                    alt="Ayush Tripathi">
+                <h4>Ayush Tripathi</h4>
+                <small>Team Member</small>
+            </div>
+            <div class="team-card">
+                <img src="https://ui-avatars.com/api/?name=Ashish+Ashok&background=0D8ABC&color=fff"
+                    alt="Ashish Ashok Gunapache">
+                <h4>Ashish Ashok</h4>
+                <small>Team Member</small>
+            </div>
+            <div class="team-card">
+                <img src="https://ui-avatars.com/api/?name=Dhruv+G+Nayak&background=0D8ABC&color=fff"
+                    alt="Dhruv G Nayak">
+                <h4>Dhruv G Nayak</h4>
+                <small>Team Member</small>
+            </div>
+            <div class="team-card">
+                <img src="https://ui-avatars.com/api/?name=Dhyan+Sirigeri&background=0D8ABC&color=fff"
+                    alt="Dhyan Sirigeri">
+                <h4>Dhyan Sirigeri</h4>
+                <small>Team Member</small>
+            </div>
+        </div>
+    </section>
 
     <section id="prescriptions-view" class="view-container" style="display: none;">
         <div class="card glass-panel">
             <h2 class="view-title"><i class="fas fa-file-prescription"></i> My Prescriptions</h2>
             <p class="view-subtitle">Review your medication history and instructions from your doctor.</p>
             <div id="prescriptions-list-container" class="list-container">
-                </div>
+            </div>
         </div>
     </section>
     <button class="sos-button">
@@ -237,6 +299,7 @@
     </div>
 
 
+    <div id="notification-container"></div>
     <script src="patient.js"></script>
 </body>
 
