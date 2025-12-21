@@ -14,13 +14,6 @@ function redirectToLogin(message = "Session expired. Please log in again.") {
 
     showCustomAlert(message, 'warning');
 
-    // If the current path is the hospital page, we block the redirect
-    const currentPath = window.location.pathname.toLowerCase();
-    if (currentPath.includes('hospital.html') || currentPath === '/') {
-        console.warn("Auth token missing/expired. Alert triggered, but redirect blocked to remain on dashboard.");
-        return;
-    }
-
     // DELAY Redirect
     setTimeout(() => {
         window.location.href = 'login.html';
@@ -286,20 +279,44 @@ function renderBookNowQueue(requests) {
 // --- 2. Queue Resolution Functions (Using PROMPT for quick action on dashboard - Kept as is) ---
 
 // Entry point for Resolution using a simple prompt (used for dashboard queue)
+// Entry point for Resolution using the NEW MODAL
 function resolveRequestStart(requestId, patientName) {
-    if (!confirm(`Do you want to write a prescription for ${patientName} and resolve request ID: ${requestId}?`)) {
+    const modal = document.getElementById('resolve-request-modal');
+    if (!modal) {
+        console.error("Resolve modal not found.");
         return;
     }
 
-    const prescriptionText = prompt(`Enter PRESCRIPTION for ${patientName} (Request ID: ${requestId}):\n\nNOTE: Press Cancel to abort resolution.`);
+    document.getElementById('resolve-request-id').value = requestId;
+    document.getElementById('resolve-patient-name').textContent = patientName;
+    document.getElementById('resolve-prescription-text').value = ''; // Clear previous input
 
-    if (prescriptionText) {
-        givePrescriptionAndResolve(requestId, patientName, prescriptionText);
-    } else if (prescriptionText === "") {
-        showCustomAlert("Prescription cannot be empty. Request was not resolved.", "warning");
-    } else {
-        console.log(`Prescription cancelled for request ${requestId}. Resolution aborted.`);
+    modal.style.display = 'flex';
+}
+
+function closeResolveModal() {
+    const modal = document.getElementById('resolve-request-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Handler for the new Resolve Modal Form Submission
+async function submitResolveRequest(event) {
+    event.preventDefault();
+
+    const requestId = document.getElementById('resolve-request-id').value;
+    const patientName = document.getElementById('resolve-patient-name').textContent;
+    const prescriptionText = document.getElementById('resolve-prescription-text').value;
+
+    if (!prescriptionText.trim()) {
+        showMessageModal("Warning", "Prescription/Notes cannot be empty.", "warning");
+        return;
     }
+
+    // Call the core logic
+    await givePrescriptionAndResolve(requestId, patientName, prescriptionText);
+
+    // Close modal on success (logic inside givePrescriptionAndResolve handles success msg)
+    closeResolveModal();
 }
 
 
@@ -352,11 +369,11 @@ async function givePrescriptionAndResolve(requestId, patientName, prescriptionTe
 
         // Final UI Update
         loadAndRenderRequests();
-        showCustomAlert(`Prescription for ${patientName} saved and Request ${requestId} resolved successfully. Queue refreshed.`, "success");
+        // showMessageModal("Success", `Prescription for ${patientName} sent and Request resolved successfully.`, "success");
 
     } catch (error) {
         console.error('Prescription/Resolution Error:', error);
-        showCustomAlert('Failed to complete prescription and resolution process. Check console for details.', "error");
+        showMessageModal("Error", 'Failed to complete process. Check console.', "error");
     }
 }
 
@@ -422,7 +439,7 @@ async function viewPatientProfile(patientId) {
         const response = await fetch(`${API_URL}/patients/${patientId}/details`, { headers: getAuthHeaders() });
 
         if (response.status === 404) {
-            showCustomAlert('Patient not found.', "error");
+            showMessageModal("Error", 'Patient not found.', "error");
             renderPatientList();
             return;
         }
@@ -494,7 +511,7 @@ async function viewPatientProfile(patientId) {
 
     } catch (error) {
         console.error('View Patient Profile Error:', error);
-        showCustomAlert('Failed to fetch patient details.', "error");
+        showMessageModal("Error", 'Failed to fetch patient details.', "error");
     }
 }
 
@@ -503,7 +520,7 @@ function showPatientPrescriptionModal(patientId, patientName) {
     const modal = document.getElementById('prescription-modal');
     if (!modal) {
         console.error("Prescription modal element not found.");
-        return showCustomAlert("Prescription modal not found in HTML. Check hospital.html structure.", "error");
+        return showMessageModal("Error", "Prescription modal not found in HTML. Check hospital.html structure.", "error");
     }
 
     document.getElementById('prescribe-patient-id').value = patientId;
@@ -525,7 +542,7 @@ async function submitPatientPrescription(event) {
     const doctorName = document.getElementById('prescription-doctor-name').value || 'Hospital Staff';
 
     if (!prescriptionText) {
-        showCustomAlert('Prescription details cannot be empty.', "warning");
+        showMessageModal("Warning", 'Prescription details cannot be empty.', "warning");
         return;
     }
 
@@ -547,8 +564,8 @@ async function submitPatientPrescription(event) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        showCustomAlert(`Prescription saved for ${patientName} successfully.`, "success");
         document.getElementById('prescription-modal').style.display = 'none';
+        showMessageModal("Success", `Prescription for ${patientName} was sent successfully.`, "success");
 
         // Refresh the profile view if the user is currently on it
         if (document.getElementById('single-patient-profile-view').style.display === 'block') {
@@ -559,16 +576,36 @@ async function submitPatientPrescription(event) {
 
     } catch (error) {
         console.error('Submit Patient Prescription Error:', error);
-        showCustomAlert('Failed to save prescription. Check the server and console.', "error");
+        showMessageModal("Error", 'Failed to save prescription. Check the server.', "error");
     }
 }
 
-// Function to delete a patient (NEW)
-async function deletePatient(patientId, patientName) {
-    if (!confirm(`Are you sure you want to discharge and delete the record for patient ${patientName}? This action cannot be undone.`)) {
-        return;
-    }
+// --- CONFIRMATION MODAL LOGIC (Generic) ---
+let confirmationCallback = null;
 
+function showConfirmationModal(title, message, callback) {
+    const modal = document.getElementById('confirmation-modal');
+    if (!modal) return;
+
+    document.getElementById('confirmation-title').textContent = title;
+    document.getElementById('confirmation-message').textContent = message;
+
+    confirmationCallback = callback;
+    modal.style.display = 'flex';
+}
+
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmation-modal');
+    if (modal) modal.style.display = 'none';
+    confirmationCallback = null; // Reset callback
+}
+
+// Global listener for the confirm button needs to be added once or managed correctly.
+// To avoid multiple listeners, we can assign the onclick directly in the show function or here if we use a global var.
+// Better approach: Assign onclick in showConfirmationModal or use a static listener that calls the global callback.
+
+// Function to delete a patient (Direct Delete - No Confirmation)
+async function deletePatient(patientId, patientName) {
     try {
         // Assumes /api/patients/:id DELETE route exists on the server.
         const response = await fetch(`${API_URL}/patients/${patientId}`, {
@@ -582,7 +619,7 @@ async function deletePatient(patientId, patientName) {
         }
 
         if (response.status === 404) {
-            showCustomAlert('Patient not found or already removed.', "error");
+            showMessageModal("Error", 'Patient not found or already removed.', "error");
             renderPatientList();
             return;
         }
@@ -592,13 +629,19 @@ async function deletePatient(patientId, patientName) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        showCustomAlert(`Patient ${patientName} record successfully discharged and deleted.`, "success");
+        // SUCCESS: Use the Generic Message Modal ("Box")
+        showMessageModal("Success", `Patient ${patientName} record successfully discharged and deleted.`, "success");
 
         // Return to the patient list after deletion
         renderPatientList();
+        // If viewing profile, switch back
+        if (document.getElementById('single-patient-profile-view').style.display === 'block') {
+            showView('patient-details-view');
+        }
+
     } catch (error) {
         console.error('Delete Patient Error:', error);
-        showCustomAlert('Failed to delete patient record. Check the server and console.', "error");
+        showMessageModal("Error", 'Failed to delete patient record. Check the server.', "error");
     }
 }
 
@@ -637,13 +680,13 @@ async function admitPatient(event) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        showCustomAlert(`Patient ${name} admitted successfully. You can now prescribe or view profile.`, "success");
+        showMessageModal("Success", `Patient ${name} admitted successfully.`, "success");
         document.getElementById('patient-admission-form').reset();
 
         showDashboard();
     } catch (error) {
         console.error('Admission Error:', error);
-        showCustomAlert('Failed to admit patient. Please check the server and console.', "error");
+        showMessageModal("Error", 'Failed to admit patient. Please check the server.', "error");
     }
 }
 
@@ -677,23 +720,19 @@ async function addStaff(event) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        showCustomAlert(`Staff member ${staffData.name} added successfully.`, "success");
+        showMessageModal("Success", `Staff member ${staffData.name} added successfully.`, "success");
         document.getElementById('staff-admission-form').reset();
 
         // Return to the updated staffing report view
         showStaffingReport();
     } catch (error) {
         console.error('Add Staff Error:', error);
-        showCustomAlert('Failed to add staff member. Check the server and console.', "error");
+        showMessageModal("Error", 'Failed to add staff member. Check the server.', "error");
     }
 }
 
-// Function to delete a staff member
+// Function to delete a staff member (Direct Delete - No Confirmation)
 async function deleteStaff(staffMongoId, staffName) {
-    if (!confirm(`Are you sure you want to remove staff member ${staffName}? This action cannot be undone.`)) {
-        return;
-    }
-
     try {
         // Use DELETE method and pass the MongoDB _id in the URL parameter
         const response = await fetch(`${API_URL}/staff/${staffMongoId}`, {
@@ -707,7 +746,7 @@ async function deleteStaff(staffMongoId, staffName) {
         }
 
         if (response.status === 404) {
-            showCustomAlert('Staff member not found or they do not belong to this hospital.', "error");
+            showMessageModal("Error", 'Staff member not found or they do not belong to this hospital.', "error");
             showStaffingReport();
             return;
         }
@@ -717,13 +756,13 @@ async function deleteStaff(staffMongoId, staffName) {
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        showCustomAlert(`Staff member ${staffName} successfully removed.`, "success");
+        showMessageModal("Success", `Staff member ${staffName} successfully removed.`, "success");
 
         // Refresh the staffing report view to update the table
         showStaffingReport();
     } catch (error) {
         console.error('Delete Staff Error:', error);
-        showCustomAlert('Failed to remove staff member. Check the server and console.', "error");
+        showMessageModal("Error", 'Failed to remove staff member. Check the server.', "error");
     }
 }
 
@@ -949,9 +988,97 @@ document.addEventListener('DOMContentLoaded', () => {
         showDashboard();
     });
 
-    // Logout Button
-    document.getElementById('logout-hospital-btn').addEventListener('click', (event) => {
-        event.preventDefault();
-        redirectToLogin("You have been logged out.");
-    });
+    // --- LOGOUT & PROFILE DROPDOWN (NEW) ---
+    const profileTrigger = document.getElementById('profile-trigger');
+    const profileDropdown = document.getElementById('hospital-profile-dropdown');
+
+    if (profileTrigger && profileDropdown) {
+        profileTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            profileDropdown.classList.toggle('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!profileTrigger.contains(e.target) && !profileDropdown.contains(e.target)) {
+                profileDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    const logoutBtn = document.getElementById('logout-hospital-btn-dropdown');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            redirectToLogin("You have been logged out.");
+        });
+    }
+
+    // --- NEW EVENT LISTENERS FOR MODALS ---
+    const resolveForm = document.getElementById('resolve-request-form');
+    if (resolveForm) {
+        resolveForm.addEventListener('submit', submitResolveRequest);
+    }
+
+    // FIX: Back Button for Staffing Report
+    const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
+    if (backToDashboardBtn) {
+        backToDashboardBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showDashboard();
+        });
+    }
+
+    // --- CONFIRMATION MODAL BUTTON ---
+    const confirmActionBtn = document.getElementById('confirm-action-btn');
+    if (confirmActionBtn) {
+        confirmActionBtn.addEventListener('click', () => {
+            if (typeof confirmationCallback === 'function') {
+                confirmationCallback();
+            }
+            closeConfirmationModal();
+        });
+    }
+
 });
+
+// --- NEW HELPER FUNCTIONS FOR MODALS ---
+
+function showMessageModal(title, message, type = 'success') {
+    const modal = document.getElementById('message-modal');
+    if (!modal) return;
+
+    // Update Content
+    document.getElementById('msg-modal-title').textContent = title;
+    document.getElementById('msg-modal-text').textContent = message;
+
+    // Update Icon/Style
+    const iconWrapper = document.getElementById('msg-modal-icon-wrapper');
+    const icon = document.getElementById('msg-modal-icon');
+
+    // Reset classes
+    iconWrapper.className = 'message-icon-wrapper';
+    icon.className = 'fas';
+
+    if (type === 'success') {
+        iconWrapper.classList.add('success');
+        icon.classList.add('fa-check-circle');
+    } else if (type === 'error') {
+        iconWrapper.classList.add('error');
+        icon.classList.add('fa-times-circle');
+    } else if (type === 'warning') {
+        iconWrapper.classList.add('warning');
+        icon.classList.add('fa-exclamation-triangle');
+    } else {
+        iconWrapper.classList.add('info');
+        icon.classList.add('fa-info-circle');
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeMessageModal() {
+    const modal = document.getElementById('message-modal');
+    if (modal) modal.style.display = 'none';
+}

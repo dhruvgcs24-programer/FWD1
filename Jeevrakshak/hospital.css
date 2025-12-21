@@ -170,6 +170,97 @@ body.hospital-body {
     height: 40px;
     border-radius: 50%;
     box-shadow: 0 0 0 2px var(--primary-blue);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.profile-icon img:hover {
+    transform: scale(1.05);
+}
+
+/* --- PROFILE DROPDOWN (NEW) --- */
+.profile-dropdown-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    top: 130%;
+    right: 0;
+    width: 200px;
+    background: #1e293b;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    z-index: 200;
+    animation: slideDownFade 0.2s ease-out;
+}
+
+.profile-dropdown-menu.show {
+    display: flex;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 5px;
+}
+
+.welcome-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.user-name-display {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 5px 0;
+}
+
+.danger-item:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-red);
 }
 
 /* --- MAIN DASHBOARD LAYOUT (FULL WIDTH) --- */
@@ -1097,4 +1188,115 @@ body.hospital-body {
     padding: 12px 20px;
     font-size: 1rem;
     width: 100%;
+}
+
+/* --- Message Modal Styles --- */
+.message-box {
+    text-align: center;
+    max-width: 400px;
+    /* Ensure text is readable on glass background */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.message-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    border: 2px solid transparent;
+}
+
+.message-icon-wrapper.success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.message-icon-wrapper.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.message-icon-wrapper.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.message-icon-wrapper.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+#msg-modal-title {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    font-family: var(--font-heading);
+    color: white;
+}
+
+#msg-modal-text {
+    color: var(--text-secondary);
+    margin-bottom: 30px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+/* Fix alignment for confirmation modal header */
+#confirmation-modal .modal-header {
+    justify-content: flex-start;
+    gap: 15px;
+}
+
+/* --- CONFIRMATION MODAL SPECIFIC (NEW) --- */
+.warning-theme {
+    border-top: 5px solid var(--accent-orange);
+}
+
+.warning-icon-box {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-orange);
+    padding: 12px;
+    border-radius: 50%;
+    margin-right: 15px;
+    font-size: 1.5rem;
+}
+
+.action-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.action-btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border-color: white;
 }

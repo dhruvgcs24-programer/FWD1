@@ -760,81 +760,113 @@ body.patient-body {
 }
 
 /* Prescription Styles */
+/* Stunning Prescription Card */
 .prescription-item {
-    background: rgba(255, 255, 255, 0.95);
-    /* High opacity for readability */
-    border-left: 5px solid var(--primary-blue);
-    padding: 0;
-    color: #333;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    /* For footer radius */
+    position: relative;
+    border-left: 6px solid var(--primary-blue);
     display: flex;
     flex-direction: column;
 }
 
+.prescription-item:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.98);
+}
+
 .prescription-item .header {
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+    padding: 20px 25px;
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 20px 25px 5px 25px;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
 }
 
 .prescription-item .header i {
     font-size: 1.5rem;
-    color: var(--primary-blue);
-    background: #e0f2fe;
-    padding: 12px;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
-}
-
-.prescription-item .details {
-    flex: 1;
+    color: white;
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
 }
 
 .prescription-item h4 {
     margin: 0;
-    font-size: 1.2rem;
-    color: #0f172a;
+    font-size: 1.25rem;
+    color: #1e293b;
     font-weight: 700;
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
 }
 
 .prescription-item .date {
     font-size: 0.85rem;
     color: #64748b;
     display: block;
-    margin-top: 4px;
+    margin-top: 5px;
+    font-weight: 500;
 }
 
 .prescription-content {
-    padding: 10px 25px;
+    padding: 20px 25px;
 }
 
 .prescription-text {
     font-size: 1.05rem;
-    line-height: 1.6;
+    line-height: 1.7;
     color: #334155;
     background: #f8fafc;
-    padding: 15px;
-    border-radius: 8px;
+    padding: 20px;
+    border-radius: 12px;
     border: 1px solid #e2e8f0;
     white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    /* Classic prescription feel */
+    position: relative;
+}
+
+.prescription-text::before {
+    content: "Rx";
+    position: absolute;
+    top: 5px;
+    right: 15px;
+    font-size: 3rem;
+    opacity: 0.05;
+    font-style: italic;
+    font-family: serif;
+    pointer-events: none;
 }
 
 .prescription-footer {
-    background: #f1f5f9;
-    padding: 12px 25px;
+    background: linear-gradient(to right, #f8fafc, #f1f5f9);
+    padding: 15px 25px;
     margin-top: auto;
     font-size: 0.9rem;
     color: #475569;
+    font-weight: 500;
     border-top: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .prescription-footer i {
     color: var(--secondary-teal);
+    font-size: 1.1rem;
 }
 
 .team-grid {

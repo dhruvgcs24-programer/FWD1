@@ -4,7 +4,7 @@
     --primary-dark: #1d4ed8;
     --secondary-teal: #14b8a6;
     --secondary-dark: #0f766e;
-    --accent-red: #ef4444; 
+    --accent-red: #ef4444;
     --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --glass-bg: rgba(255, 255, 255, 0.95);
     --glass-border: rgba(255, 255, 255, 0.2);
@@ -29,8 +29,10 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-y: auto;   /* Allows vertical scrolling only when content overflows */
-    overflow-x: hidden; /* Prevents unwanted horizontal scrolling */
+    overflow-y: auto;
+    /* Allows vertical scrolling only when content overflows */
+    overflow-x: hidden;
+    /* Prevents unwanted horizontal scrolling */
     position: relative;
     padding: 20px;
 }
@@ -81,9 +83,17 @@ body {
 }
 
 @keyframes float {
-    0% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-30px) scale(1.05); }
-    100% { transform: translateY(0) scale(1); }
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-30px) scale(1.05);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* --- MAIN WRAPPER --- */
@@ -109,7 +119,7 @@ body {
     color: white;
     margin-bottom: 5px;
     letter-spacing: -0.5px;
-    text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .main-title i {
@@ -140,8 +150,15 @@ body {
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 h2 {
@@ -181,12 +198,12 @@ h2 {
     position: relative;
     overflow: hidden;
     text-align: left;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .submit-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
 .submit-btn:active {
@@ -198,23 +215,28 @@ h2 {
     background: white;
     border: 1px solid #e2e8f0;
 }
+
 .submit-btn.patient-btn .icon-wrapper {
     background: #e0f2fe;
     color: var(--primary-blue);
 }
+
 .submit-btn.patient-btn .text-wrapper .role-title {
     color: var(--text-main);
 }
+
 .submit-btn.patient-btn:hover {
     border-color: var(--primary-blue);
     background: #f8fafc;
 }
+
 /* Primary Action variant for inside forms */
 form .submit-btn.patient-btn {
     background: var(--primary-blue);
     justify-content: center;
     color: white;
 }
+
 form .submit-btn.patient-btn:hover {
     background: var(--primary-dark);
 }
@@ -224,23 +246,28 @@ form .submit-btn.patient-btn:hover {
     background: white;
     border: 1px solid #e2e8f0;
 }
+
 .submit-btn.hospital-btn .icon-wrapper {
     background: #dcfce7;
     color: var(--secondary-dark);
 }
+
 .submit-btn.hospital-btn .text-wrapper .role-title {
     color: var(--text-main);
 }
+
 .submit-btn.hospital-btn:hover {
     border-color: var(--secondary-teal);
     background: #f8fafc;
 }
+
 /* Hospital Login Action */
 form .submit-btn.hospital-btn {
     background: var(--secondary-teal);
     color: white;
     justify-content: center;
 }
+
 form .submit-btn.hospital-btn:hover {
     background: var(--secondary-dark);
 }
@@ -317,7 +344,8 @@ form .submit-btn.hospital-btn:hover {
 
 .input-group input {
     width: 100%;
-    padding: 14px 14px 14px 45px; /* Space for icon */
+    padding: 14px 14px 14px 45px;
+    /* Space for icon */
     border: 2px solid #e2e8f0;
     border-radius: 12px;
     font-size: 1rem;
@@ -334,10 +362,12 @@ form .submit-btn.hospital-btn:hover {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.input-group input:focus + .input-icon, 
-.input-group input:focus ~ .input-icon { /* Sibling selector fix */
+.input-group input:focus+.input-icon,
+.input-group input:focus~.input-icon {
+    /* Sibling selector fix */
     color: var(--primary-blue);
 }
+
 .input-wrapper:focus-within .input-icon {
     color: var(--primary-blue);
 }
@@ -355,24 +385,27 @@ form .submit-btn.hospital-btn:hover {
 }
 
 .geo-btn {
-    background: transparent;
-    border: 1px dashed #94a3b8;
-    padding: 8px 16px;
-    border-radius: 8px;
-    color: #64748b;
-    font-weight: 500;
+    background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    color: white;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.3s;
+    gap: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 10px rgba(20, 184, 166, 0.3);
 }
 
 .geo-btn:hover {
-    border-color: var(--primary-blue);
-    color: var(--primary-blue);
-    background: #e0f2fe;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(20, 184, 166, 0.4);
+    background: linear-gradient(135deg, #2dd4bf 0%, #115e59 100%);
+    color: white;
+    /* Ensure text stays white */
 }
 
 .status-text {
@@ -380,15 +413,20 @@ form .submit-btn.hospital-btn:hover {
     color: var(--text-muted);
     text-align: center;
 }
-.status-text i { margin-right: 5px; }
+
+.status-text i {
+    margin-right: 5px;
+}
 
 /* --- HOSPITAL LAT/LNG ROWS --- */
 .coords-row {
     display: flex;
     gap: 15px;
 }
+
 .coords-row .input-group input {
-    padding-left: 14px; /* No icons for lat/lng */
+    padding-left: 14px;
+    /* No icons for lat/lng */
 }
 
 /* --- FORM FOOTER (BACK BTN) --- */
@@ -436,14 +474,96 @@ form .submit-btn.hospital-btn:hover {
     .auth-wrapper {
         max-width: 100%;
     }
+
     .form-container {
         padding: 30px 20px;
     }
+
     .main-title {
         font-size: 2.2rem;
     }
+
     .coords-row {
         flex-direction: column;
         gap: 0;
     }
+}
+
+/* --- MODAL STYLES (NEW) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 400px;
+    box-shadow: var(--shadow-xl);
+    text-align: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+.modal-icon {
+    font-size: 3rem;
+    color: #f59e0b;
+    /* Warning/Amber */
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-main);
+}
+
+.modal-body p {
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 25px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.action-btn-modal {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: var(--text-muted);
+}
+
+.btn-secondary:hover {
+    background: #e2e8f0;
+    color: var(--text-main);
+}
+
+.btn-primary {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
 }
