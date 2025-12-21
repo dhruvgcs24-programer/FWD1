@@ -767,18 +767,35 @@ async function deleteStaff(staffMongoId, staffName) {
 }
 
 
+// Helper to update UI counters for staff (Both Dashboard and Report)
+function updateStaffCounters(staff) {
+    const doctors = staff.filter(s => s.role.toLowerCase().includes('doctor') || s.role.toLowerCase().includes('physician') || s.role.toLowerCase().includes('surgeon')).length;
+    const nurses = staff.filter(s => s.role.toLowerCase().includes('nurse')).length;
+    const admin = staff.filter(s => s.role.toLowerCase().includes('admin') || s.role.toLowerCase().includes('admissions')).length;
+
+    // Update Dashboard Counts
+    if (document.getElementById('dashboard-staff-doctors-count')) document.getElementById('dashboard-staff-doctors-count').textContent = doctors;
+    if (document.getElementById('dashboard-staff-nurses-count')) document.getElementById('dashboard-staff-nurses-count').textContent = nurses;
+    if (document.getElementById('dashboard-staff-admins-count')) document.getElementById('dashboard-staff-admins-count').textContent = admin;
+
+    // Update Report Counts
+    if (document.getElementById('report-staff-doctors-count')) document.getElementById('report-staff-doctors-count').textContent = doctors;
+    if (document.getElementById('report-staff-nurses-count')) document.getElementById('report-staff-nurses-count').textContent = nurses;
+    if (document.getElementById('report-staff-admins-count')) document.getElementById('report-staff-admins-count').textContent = admin;
+}
+
 // Renders the staff list from the API 
 async function showStaffingReport() {
     const staff = await fetchStaff();
 
-    const doctors = staff.filter(s => s.role.toLowerCase().includes('doctor') || s.role.toLowerCase().includes('physician') || s.role.toLowerCase().includes('surgeon'));
-    const nurses = staff.filter(s => s.role.toLowerCase().includes('nurse'));
-    const admin = staff.filter(s => s.role.toLowerCase().includes('admin') || s.role.toLowerCase().includes('admissions'));
+    // CENTRALLY UPDATE ALL COUNTERS (Dashboard & Report)
+    updateStaffCounters(staff);
 
-    // Update summary counts
-    document.getElementById('staff-doctors-count').textContent = doctors.length;
-    document.getElementById('staff-nurses-count').textContent = nurses.length;
-    document.getElementById('staff-admins-count').textContent = admin.length;
+    // Filter for local variables if needed for other logic, or just use staff for table
+    // (We can remove the redundant filtering here if we move it to the helper, 
+    // but the helper updates DOM. We still need the list for the table if we want to loop 'staff' directly)
+    // The original code filtered for counts, but now we use the helper for counts.
+    // The table rendering below uses the full 'staff' array anyway.
 
 
     // Render Detailed Staff List table
@@ -886,9 +903,13 @@ function showView(viewId) {
     }
 }
 
-function showDashboard() {
+async function showDashboard() {
     showView('main-dashboard-view');
     loadAndRenderRequests();
+
+    // Ensure staff counts are updated on dashboard load
+    const staff = await fetchStaff();
+    updateStaffCounters(staff);
 }
 
 
