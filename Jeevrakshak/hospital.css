@@ -1048,8 +1048,8 @@ body.hospital-body {
 }
 
 .prescription-card {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
     border-left: 5px solid var(--success-green);
     padding: 15px;
     border-radius: var(--radius);
@@ -1101,7 +1101,8 @@ body.hospital-body {
     padding: 30px;
     color: var(--text-secondary);
     font-style: italic;
-    background: #f4f6f9;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
 }
 
